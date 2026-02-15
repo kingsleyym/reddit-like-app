@@ -3,14 +3,31 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '../auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const sort = searchParams.get('sort') || 'new'
+  const search = searchParams.get('search')
+
   try {
+    let orderBy: any = { createdAt: 'desc' }
+    if (sort === 'hot') {
+      orderBy = [{ score: 'desc' }, { createdAt: 'desc' }]
+    } else if (sort === 'top') {
+      orderBy = { score: 'desc' }
+    }
+
     const posts = await prisma.post.findMany({
+      where: search ? {
+        OR: [
+          { title: { contains: search, mode: 'insensitive' } },
+          { content: { contains: search, mode: 'insensitive' } }
+        ]
+      } : {},
       include: {
         author: { select: { id: true, name: true, image: true } },
         _count: { select: { comments: true } }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy
     })
     return NextResponse.json(posts)
   } catch (error) {

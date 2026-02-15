@@ -21,13 +21,24 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
+  const [sort, setSort] = useState('hot')
+  const [search, setSearch] = useState('')
 
-  useEffect(() => {
-    fetch('/api/posts')
+  const fetchPosts = () => {
+    const params = new URLSearchParams()
+    if (sort) params.append('sort', sort)
+    if (search) params.append('search', search)
+    fetch(`/api/posts?${params}`)
       .then(res => res.json())
       .then(setPosts)
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => {
+    fetchPosts()
+    const interval = setInterval(fetchPosts, 30000) // Poll every 30 seconds
+    return () => clearInterval(interval)
+  }, [sort, search])
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -49,6 +60,20 @@ export default function Home() {
   return (
     <div className="max-w-4xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Reddit-like App</h1>
+      <div className="mb-4 flex space-x-4">
+        <select value={sort} onChange={(e) => setSort(e.target.value)} className="p-2 border rounded">
+          <option value="hot">Hot</option>
+          <option value="new">New</option>
+          <option value="top">Top</option>
+        </select>
+        <input
+          type="text"
+          placeholder="Search posts..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 p-2 border rounded"
+        />
+      </div>
       {session ? (
         <>
           <div className="mb-4">

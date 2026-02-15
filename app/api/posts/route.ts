@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const posts = await prisma.post.findMany({
       include: {
-        author: { select: { name: true, image: true } },
+        author: { select: { id: true, name: true, image: true } },
         _count: { select: { comments: true } }
       },
       orderBy: { createdAt: 'desc' }
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
         authorId: session.user.id
       },
       include: {
-        author: { select: { name: true, image: true } }
+        author: { select: { id: true, name: true, image: true } }
       }
     })
     return NextResponse.json(post, { status: 201 })

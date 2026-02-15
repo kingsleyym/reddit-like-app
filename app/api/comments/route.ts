@@ -38,12 +38,18 @@ export async function POST(request: NextRequest) {
 
   try {
     const { content, postId, parentId } = await request.json()
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email! }
+    })
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
     const comment = await prisma.comment.create({
       data: {
         content,
         postId,
         parentId,
-        authorId: session.user.id
+        authorId: user.id
       },
       include: {
         author: { select: { id: true, name: true, image: true } }

@@ -19,8 +19,8 @@ export async function GET(request: NextRequest) {
     const posts = await prisma.post.findMany({
       where: search ? {
         OR: [
-          { title: { contains: search, mode: 'insensitive' } },
-          { content: { contains: search, mode: 'insensitive' } }
+          { title: { contains: search } },
+          { content: { contains: search } }
         ]
       } : {},
       include: {
@@ -43,11 +43,17 @@ export async function POST(request: NextRequest) {
 
   try {
     const { title, content } = await request.json()
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email! }
+    })
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
     const post = await prisma.post.create({
       data: {
         title,
         content,
-        authorId: session.user.id
+        authorId: user.id
       },
       include: {
         author: { select: { id: true, name: true, image: true } }

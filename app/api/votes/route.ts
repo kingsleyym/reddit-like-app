@@ -11,7 +11,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const { postId, commentId, value } = await request.json() // value: 1 or -1
-    const userId = session.user.id
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email! }
+    })
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+    const userId = user.id
 
     // Upsert vote
     const vote = await prisma.vote.upsert({

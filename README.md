@@ -55,6 +55,23 @@ Sie wird automatisch auf GitHub gebaut (auf einem echten Windows-Rechner):
 
 ---
 
+## Tag- und Abend-Szenen
+
+Das Board kennt zwei **Szenen**: **Tag** (z. B. Mittagsmenü) und **Abend**.
+Jede Szene legt fest, welches Video auf links / Mitte / rechts läuft.
+
+- Oben im Dashboard mit einem Tipp zwischen Tag und Abend umschalten – der
+  Wechsel erscheint sofort auf allen Bildschirmen.
+- Unter „Szene bearbeiten" stellst du je Szene ein, welches Video wohin kommt.
+- **Automatik Tag → Abend**: optional automatisch nach Uhrzeit umschalten
+  (z. B. Tag ab 11:00, Abend ab 17:00).
+
+## Mediathek
+
+Videos werden hochgeladen (auch von zu Hause über Tailscale), bekommen eine
+Vorschau, lassen sich umbenennen und löschen. Zuweisen an einen Bildschirm per
+Tippen in der Szene.
+
 ## Nachtbetrieb (automatisch aus/an)
 
 Im Dashboard unter „Nachtbetrieb":

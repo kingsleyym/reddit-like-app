@@ -5,147 +5,103 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Menu Board Player</title>
     <style>
-      html,
-      body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        background: #000;
-        overflow: hidden;
-        cursor: none;
+      html, body {
+        margin: 0; padding: 0; width: 100%; height: 100%;
+        background: #000; overflow: hidden; cursor: none;
       }
-      #stage {
-        position: fixed;
-        inset: 0;
-        background: #000;
-      }
+      #stage { position: fixed; inset: 0; background: #000; }
       video {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover; /* full-bleed; video is rendered to screen aspect */
-        background: #000;
+        position: absolute; inset: 0; width: 100%; height: 100%;
+        object-fit: cover; background: #000;
       }
-      /* Double-buffered swap: two stacked videos, cross-fade between them. */
-      video.active {
-        opacity: 1;
-        transition: opacity 0.35s ease;
-        z-index: 2;
-      }
-      video.idle {
-        opacity: 0;
-        z-index: 1;
-      }
+      video.active { opacity: 1; transition: opacity 0.4s ease; z-index: 2; }
+      video.idle { opacity: 0; z-index: 1; }
       #placeholder {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #444;
-        font-family: system-ui, sans-serif;
-        font-size: 3vh;
-        z-index: 0;
+        position: absolute; inset: 0; display: flex; align-items: center;
+        justify-content: center; color: #3a3a3a; z-index: 0;
+        font-family: system-ui, sans-serif; font-size: 3vh;
       }
     </style>
   </head>
   <body>
     <div id="stage">
       <div id="placeholder">Kein Video zugewiesen</div>
-      <video id="vidA" class="active" muted playsinline></video>
-      <video id="vidB" class="idle" muted playsinline></video>
+      <video id="vidA" class="active" muted playsinline loop></video>
+      <video id="vidB" class="idle" muted playsinline loop></video>
     </div>
     <script>
-      const params = new URLSearchParams(location.search);
-      const slot = params.get("screen") || "left";
-
+      const slot = new URLSearchParams(location.search).get("screen") || "left";
       const placeholder = document.getElementById("placeholder");
       let front = document.getElementById("vidA");
       let back = document.getElementById("vidB");
       let currentUrl = null;
 
-      function playLoop(video) {
+      // Force endless looping even if the browser's native loop ever hiccups.
+      function armLoop(video) {
         video.loop = true;
         video.muted = true;
-        const p = video.play();
-        if (p && p.catch) p.catch(() => {});
+        video.onended = () => {
+          try { video.currentTime = 0; video.play().catch(() => {}); } catch (_) {}
+        };
+        // If playback stalls, nudge it back to playing.
+        video.onpause = () => {
+          if (video === front && currentUrl) {
+            setTimeout(() => { if (video.paused) video.play().catch(() => {}); }, 250);
+          }
+        };
       }
+      armLoop(front);
+      armLoop(back);
 
       function showVideo(url) {
         if (url === currentUrl) return;
         currentUrl = url;
 
         if (!url) {
-          front.pause();
-          front.removeAttribute("src");
-          front.load();
+          front.pause(); front.removeAttribute("src"); front.load();
           placeholder.style.display = "flex";
           return;
         }
-
         placeholder.style.display = "none";
 
-        // Load into the back buffer, then cross-fade once it can play.
-        back.src = url;
-        back.load();
-        back.oncanplay = () => {
-          playLoop(back);
-          back.classList.remove("idle");
-          back.classList.add("active");
-          front.classList.remove("active");
-          front.classList.add("idle");
-          // swap references
-          const tmp = front;
-          front = back;
-          back = tmp;
+        const incoming = back;
+        incoming.src = url;
+        incoming.load();
+
+        const onReady = () => {
+          incoming.play().catch(() => {});
+          incoming.classList.add("active"); incoming.classList.remove("idle");
+          front.classList.add("idle"); front.classList.remove("active");
+          const old = front;
+          front = incoming; back = old;
           setTimeout(() => {
-            try {
-              back.pause();
-            } catch (_) {}
-          }, 500);
+            try { old.pause(); old.removeAttribute("src"); old.load(); } catch (_) {}
+          }, 700);
         };
+        // {once:true} prevents the swap from re-firing when the video loops.
+        incoming.addEventListener("canplay", onReady, { once: true });
       }
 
-      // --- WebSocket: receive live assignment changes ----------------------
       let ws;
       function connect() {
         ws = new WebSocket("ws://" + location.host);
-        ws.onopen = () => {
-          // Identify this player so the dashboard can show live status.
-          ws.send(JSON.stringify({ type: "hello", role: "player", slot }));
-        };
+        ws.onopen = () => ws.send(JSON.stringify({ type: "hello", role: "player", slot }));
         ws.onmessage = (ev) => {
           let msg;
-          try {
-            msg = JSON.parse(ev.data);
-          } catch (_) {
-            return;
-          }
-          if (msg.type === "state" && msg.state && msg.state.screens) {
-            const entry = msg.state.screens[slot];
-            showVideo(entry ? entry.videoUrl : null);
-          } else if (msg.type === "assign" && msg.slot === slot) {
-            showVideo(msg.videoUrl);
+          try { msg = JSON.parse(ev.data); } catch (_) { return; }
+          if (msg.type === "live" && msg.screens) {
+            showVideo(msg.screens[slot]);
+          } else if (msg.type === "state" && msg.state && msg.state.live) {
+            showVideo(msg.state.live[slot]);
           }
         };
         ws.onclose = () => setTimeout(connect, 2000);
-        ws.onerror = () => {
-          try {
-            ws.close();
-          } catch (_) {}
-        };
+        ws.onerror = () => { try { ws.close(); } catch (_) {} };
       }
       connect();
 
-      // Fallback: poll state once on load in case WS is slow.
-      fetch("/api/state")
-        .then((r) => r.json())
-        .then((s) => {
-          const entry = s.screens[slot];
-          showVideo(entry ? entry.videoUrl : null);
-        })
+      fetch("/api/state").then((r) => r.json())
+        .then((s) => showVideo(s.live ? s.live[slot] : null))
         .catch(() => {});
     </script>
   </body>

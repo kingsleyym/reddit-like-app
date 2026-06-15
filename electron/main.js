@@ -1,20 +1,31 @@
 "use strict";
 
-const { app, BrowserWindow, screen, powerSaveBlocker, globalShortcut } = require("electron");
+const {
+  app,
+  BrowserWindow,
+  screen,
+  powerSaveBlocker,
+  globalShortcut,
+  Tray,
+  Menu,
+  nativeImage,
+  shell,
+} = require("electron");
 const path = require("path");
+const os = require("os");
 const { Store } = require("../server/store");
 const { startServer } = require("../server");
 const { applySchedule, runPowerAction } = require("./power");
 
 const PORT = 8787;
+const SLOTS = ["left", "middle", "right"];
 
 let store;
-let playerWindows = {}; // slot -> BrowserWindow
+let playerWindows = {};
 let dashboardWindow = null;
+let tray = null;
 let quitting = false;
 let serverInfo = null;
-
-const SLOTS = ["left", "middle", "right"];
 
 function userDataPaths() {
   const base = app.getPath("userData");
@@ -24,25 +35,15 @@ function userDataPaths() {
   };
 }
 
-/**
- * Decide which physical display each logical slot should use.
- * Default: sort displays left-to-right by x position. A manual mapping
- * from the dashboard (slot -> display id) overrides the automatic order.
- */
 function resolveDisplaysForSlots() {
   const displays = screen.getAllDisplays();
   const sorted = [...displays].sort((a, b) => a.bounds.x - b.bounds.x);
   const mapping = store.getState().displayMapping || {};
   const result = {};
-
   SLOTS.forEach((slot, index) => {
     let display = null;
-    if (mapping[slot] != null) {
-      display = displays.find((d) => d.id === mapping[slot]) || null;
-    }
-    if (!display) {
-      display = sorted[index] || null; // may be null if fewer monitors
-    }
+    if (mapping[slot] != null) display = displays.find((d) => d.id === mapping[slot]) || null;
+    if (!display) display = sorted[index] || null;
     result[slot] = display;
   });
   return result;
@@ -53,8 +54,7 @@ function playerUrl(slot) {
 }
 
 function createPlayerWindow(slot, display) {
-  if (!display) return; // no monitor for this slot
-
+  if (!display) return;
   const win = new BrowserWindow({
     x: display.bounds.x,
     y: display.bounds.y,
@@ -65,17 +65,10 @@ function createPlayerWindow(slot, display) {
     kiosk: true,
     autoHideMenuBar: true,
     backgroundColor: "#000000",
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
+    webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
-
   win.setMenuBarVisibility(false);
   win.loadURL(playerUrl(slot));
-
-  // Auto-recover: if a player window dies while we are still running,
-  // recreate it on the same display so the board never stays black.
   win.on("closed", () => {
     playerWindows[slot] = null;
     if (!quitting) {
@@ -85,17 +78,12 @@ function createPlayerWindow(slot, display) {
       }, 1500);
     }
   });
-
   playerWindows[slot] = win;
 }
 
 function createAllPlayers() {
   const displays = resolveDisplaysForSlots();
-  for (const slot of SLOTS) {
-    if (!playerWindows[slot]) {
-      createPlayerWindow(slot, displays[slot]);
-    }
-  }
+  for (const slot of SLOTS) if (!playerWindows[slot]) createPlayerWindow(slot, displays[slot]);
 }
 
 function recreateAllPlayers() {
@@ -110,51 +98,100 @@ function recreateAllPlayers() {
   setTimeout(createAllPlayers, 500);
 }
 
-// Open the dashboard in a normal (non-kiosk) window on the PC itself.
-// Handy when testing on a single monitor where the player covers the desktop.
 function openDashboardWindow() {
   if (dashboardWindow && !dashboardWindow.isDestroyed()) {
     dashboardWindow.focus();
     return;
   }
   dashboardWindow = new BrowserWindow({
-    width: 480,
-    height: 900,
+    width: 520,
+    height: 920,
     title: "MenuBoard – Steuerung",
-    alwaysOnTop: true,
+    backgroundColor: "#0b0d12",
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
   dashboardWindow.loadURL(`http://127.0.0.1:${PORT}/dashboard`);
-  dashboardWindow.on("closed", () => {
-    dashboardWindow = null;
-  });
+  dashboardWindow.on("closed", () => (dashboardWindow = null));
 }
 
 function listDisplays() {
-  const sorted = [...screen.getAllDisplays()].sort(
-    (a, b) => a.bounds.x - b.bounds.x
-  );
+  const sorted = [...screen.getAllDisplays()].sort((a, b) => a.bounds.x - b.bounds.x);
+  const primaryId = screen.getPrimaryDisplay().id;
   return sorted.map((d, i) => ({
     id: d.id,
-    label: `Monitor ${i + 1} (${d.bounds.width}x${d.bounds.height} @ x=${d.bounds.x})`,
+    label: `Monitor ${i + 1} (${d.bounds.width}x${d.bounds.height})`,
     bounds: d.bounds,
-    primary: d.id === screen.getPrimaryDisplay().id,
+    primary: d.id === primaryId,
   }));
+}
+
+// --- Automatic Tag/Abend switching by time of day -------------------------
+function toMinutes(hhmm) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || ""));
+  return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
+}
+
+function checkAutoSwitch() {
+  const st = store.getState();
+  const a = st.autoSwitch;
+  if (!a || !a.enabled) return;
+  const dayStart = toMinutes(a.dayStart);
+  const nightStart = toMinutes(a.nightStart);
+  if (dayStart == null || nightStart == null) return;
+  const now = new Date();
+  const cur = now.getHours() * 60 + now.getMinutes();
+  let target;
+  if (dayStart <= nightStart) {
+    target = cur >= dayStart && cur < nightStart ? "day" : "night";
+  } else {
+    target = cur >= dayStart || cur < nightStart ? "day" : "night";
+  }
+  if (st.liveScene !== target) {
+    store.setLiveScene(target);
+    if (serverInfo) {
+      serverInfo.broadcastState();
+      serverInfo.broadcastLive();
+    }
+  }
+}
+
+function buildTray() {
+  let icon;
+  try {
+    icon = nativeImage.createFromPath(path.join(__dirname, "..", "assets", "tray-icon.png"));
+  } catch (_) {
+    icon = nativeImage.createEmpty();
+  }
+  tray = new Tray(icon);
+  tray.setToolTip("MenuBoard");
+  const menu = Menu.buildFromTemplate([
+    { label: "Dashboard öffnen", click: openDashboardWindow },
+    {
+      label: "Dashboard im Browser öffnen",
+      click: () => shell.openExternal(`http://localhost:${PORT}/dashboard`),
+    },
+    { label: "Player neu starten", click: recreateAllPlayers },
+    { type: "separator" },
+    {
+      label: "Beenden",
+      click: () => {
+        quitting = true;
+        app.quit();
+      },
+    },
+  ]);
+  tray.setContextMenu(menu);
+  tray.on("double-click", openDashboardWindow);
 }
 
 app.whenReady().then(async () => {
   const { dataFile, mediaDir } = userDataPaths();
   store = new Store(dataFile);
 
-  // Keep displays awake so the menu board never sleeps mid-service.
   powerSaveBlocker.start("prevent-display-sleep");
-
-  // Autostart on boot so a power-on always brings the board up.
   try {
     app.setLoginItemSettings({ openAtLogin: true });
-  } catch (_) {
-    /* ignore on platforms that do not support it */
-  }
+  } catch (_) {}
 
   serverInfo = await startServer({
     store,
@@ -167,25 +204,22 @@ app.whenReady().then(async () => {
   });
 
   createAllPlayers();
+  buildTray();
 
-  // Maintenance / testing shortcuts (work even over the kiosk windows):
-  //   Ctrl+Shift+D  open the dashboard in a window on this PC
-  //   Ctrl+Shift+Q  quit the app (e.g. to exit kiosk for maintenance)
   globalShortcut.register("CommandOrControl+Shift+D", openDashboardWindow);
   globalShortcut.register("CommandOrControl+Shift+Q", () => {
     quitting = true;
     app.quit();
   });
 
-  // Re-apply the saved schedule on every launch so a wake task always exists.
   const sched = store.getState().schedule;
   if (sched && sched.enabled) {
-    applySchedule(sched).catch((e) =>
-      console.error("[main] schedule apply failed:", e.message)
-    );
+    applySchedule(sched).catch((e) => console.error("[main] schedule apply failed:", e.message));
   }
 
-  // If monitors are plugged in/out, rebuild the player windows.
+  checkAutoSwitch();
+  setInterval(checkAutoSwitch, 30 * 1000);
+
   screen.on("display-added", recreateAllPlayers);
   screen.on("display-removed", recreateAllPlayers);
   screen.on("display-metrics-changed", recreateAllPlayers);
@@ -194,15 +228,8 @@ app.whenReady().then(async () => {
 app.on("before-quit", () => {
   quitting = true;
 });
-
-app.on("will-quit", () => {
-  globalShortcut.unregisterAll();
-});
-
-// Keep running even if all windows close (auto-recreate handles it),
-// but on macOS / dev the standard behavior is fine.
+app.on("will-quit", () => globalShortcut.unregisterAll());
 app.on("window-all-closed", () => {
-  if (quitting && process.platform !== "darwin") {
-    app.quit();
-  }
+  // Keep running in the tray; players auto-recreate. Only quit when asked.
+  if (quitting && process.platform !== "darwin") app.quit();
 });

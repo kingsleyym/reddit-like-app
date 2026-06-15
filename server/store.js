@@ -3,29 +3,32 @@
 const fs = require("fs");
 const path = require("path");
 
-// Default configuration. "screens" maps the three logical slots
-// (left / middle / right) to a stored video filename, or null when empty.
+// Two scenes: "day" (Tag/Mittag) and "night" (Abend). Each maps the three
+// logical screen slots to a stored video id (or null). One scene is "live"
+// at a time. The dashboard can switch the live scene with one tap, or it
+// switches automatically by time of day.
+function emptySlots() {
+  return { left: null, middle: null, right: null };
+}
+
 const DEFAULT_STATE = {
-  screens: {
-    left: null,
-    middle: null,
-    right: null,
+  videos: [], // { id, file, name, size, uploadedAt }
+  scenes: {
+    day: emptySlots(),
+    night: emptySlots(),
   },
-  // Mapping of a logical slot to a physical display id. When null the
-  // displays are assigned automatically by their horizontal position.
-  displayMapping: {
-    left: null,
-    middle: null,
-    right: null,
+  liveScene: "day", // "day" | "night"
+  autoSwitch: {
+    enabled: false,
+    dayStart: "11:00", // switch to day scene at this time
+    nightStart: "17:00", // switch to night scene at this time
   },
-  // Nightly power schedule. Times are "HH:MM" in 24h local time.
   schedule: {
     enabled: false,
     sleepTime: "23:30",
     wakeTime: "08:30",
   },
-  // List of uploaded videos: { id, file, name, size, uploadedAt }
-  videos: [],
+  displayMapping: { left: null, middle: null, right: null },
 };
 
 class Store {
@@ -37,21 +40,29 @@ class Store {
 
   _load() {
     try {
-      if (fs.existsSync(this.dataFile)) {
-        const raw = fs.readFileSync(this.dataFile, "utf8");
-        const parsed = JSON.parse(raw);
-        // Shallow-merge so new fields from updates get sane defaults.
-        this.state = {
-          ...JSON.parse(JSON.stringify(DEFAULT_STATE)),
-          ...parsed,
-          screens: { ...DEFAULT_STATE.screens, ...(parsed.screens || {}) },
-          displayMapping: {
-            ...DEFAULT_STATE.displayMapping,
-            ...(parsed.displayMapping || {}),
-          },
-          schedule: { ...DEFAULT_STATE.schedule, ...(parsed.schedule || {}) },
-          videos: Array.isArray(parsed.videos) ? parsed.videos : [],
-        };
+      if (!fs.existsSync(this.dataFile)) return;
+      const parsed = JSON.parse(fs.readFileSync(this.dataFile, "utf8"));
+      const d = JSON.parse(JSON.stringify(DEFAULT_STATE));
+
+      this.state = {
+        ...d,
+        ...parsed,
+        videos: Array.isArray(parsed.videos) ? parsed.videos : [],
+        scenes: {
+          day: { ...emptySlots(), ...((parsed.scenes && parsed.scenes.day) || {}) },
+          night: { ...emptySlots(), ...((parsed.scenes && parsed.scenes.night) || {}) },
+        },
+        liveScene: parsed.liveScene === "night" ? "night" : "day",
+        autoSwitch: { ...d.autoSwitch, ...(parsed.autoSwitch || {}) },
+        schedule: { ...d.schedule, ...(parsed.schedule || {}) },
+        displayMapping: { ...d.displayMapping, ...(parsed.displayMapping || {}) },
+      };
+
+      // Migration from the old flat "screens" model: seed both scenes with it.
+      if (parsed.screens && (!parsed.scenes)) {
+        this.state.scenes.day = { ...emptySlots(), ...parsed.screens };
+        this.state.scenes.night = { ...emptySlots(), ...parsed.screens };
+        this.save();
       }
     } catch (err) {
       console.error("[store] could not read data file, using defaults:", err.message);
@@ -76,25 +87,47 @@ class Store {
     this.save();
   }
 
+  renameVideo(id, name) {
+    const v = this.state.videos.find((x) => x.id === id);
+    if (v) {
+      v.name = String(name || "").slice(0, 120) || v.name;
+      this.save();
+    }
+    return v;
+  }
+
   removeVideo(id) {
     const video = this.state.videos.find((v) => v.id === id);
     this.state.videos = this.state.videos.filter((v) => v.id !== id);
-    // Unassign it from any screen that was using it.
-    for (const slot of Object.keys(this.state.screens)) {
-      if (this.state.screens[slot] === id) {
-        this.state.screens[slot] = null;
+    // Unassign it from any scene/slot that referenced it.
+    for (const scene of ["day", "night"]) {
+      for (const slot of ["left", "middle", "right"]) {
+        if (this.state.scenes[scene][slot] === id) {
+          this.state.scenes[scene][slot] = null;
+        }
       }
     }
     this.save();
     return video;
   }
 
-  assign(slot, videoId) {
-    if (!(slot in this.state.screens)) {
-      throw new Error("unknown screen slot: " + slot);
-    }
-    this.state.screens[slot] = videoId; // videoId may be null to clear
+  setSceneSlot(scene, slot, videoId) {
+    if (!this.state.scenes[scene]) throw new Error("unknown scene: " + scene);
+    if (!(slot in this.state.scenes[scene])) throw new Error("unknown slot: " + slot);
+    this.state.scenes[scene][slot] = videoId || null;
     this.save();
+  }
+
+  setLiveScene(scene) {
+    if (scene !== "day" && scene !== "night") throw new Error("unknown scene: " + scene);
+    this.state.liveScene = scene;
+    this.save();
+  }
+
+  setAutoSwitch(cfg) {
+    this.state.autoSwitch = { ...this.state.autoSwitch, ...cfg };
+    this.save();
+    return this.state.autoSwitch;
   }
 
   setSchedule(schedule) {

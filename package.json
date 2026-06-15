@@ -26,6 +26,7 @@
       "electron/**/*",
       "server/**/*",
       "renderer/**/*",
+      "assets/**/*",
       "node_modules/**/*"
     ],
     "win": {

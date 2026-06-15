@@ -2,162 +2,288 @@
 <html lang="de">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Menu Board – Steuerung</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>MenuBoard – Steuerung</title>
     <style>
       :root {
-        --bg: #0f1115;
-        --card: #1a1d24;
-        --line: #2a2f3a;
-        --text: #e7e9ee;
-        --muted: #9aa3b2;
-        --accent: #ff5a3c;
-        --ok: #2ecc71;
+        --bg: #0a0c11;
+        --bg2: #0f1219;
+        --card: rgba(255, 255, 255, 0.04);
+        --card-border: rgba(255, 255, 255, 0.08);
+        --text: #f2f4f8;
+        --muted: #8b94a7;
+        --accent: #ff6b35;
+        --day: #ffb020;
+        --night: #7c6cff;
+        --ok: #25d07d;
+        --bad: #ff5470;
+        --radius: 18px;
+        --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
       }
-      * { box-sizing: border-box; }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body { margin: 0; }
       body {
-        margin: 0;
-        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-        background: var(--bg);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
         color: var(--text);
-        padding: 16px;
-        max-width: 860px;
+        background:
+          radial-gradient(1200px 600px at 80% -10%, rgba(255, 107, 53, 0.12), transparent 60%),
+          radial-gradient(1000px 500px at -10% 10%, rgba(124, 108, 255, 0.12), transparent 55%),
+          var(--bg);
+        min-height: 100vh;
+        padding: 18px 16px 60px;
+        max-width: 720px;
         margin: 0 auto;
       }
-      h1 { font-size: 22px; margin: 8px 0 4px; }
-      .sub { color: var(--muted); margin-bottom: 20px; font-size: 14px; }
+      header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 18px;
+      }
+      .brand { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
+      .brand span { opacity: 0.6; font-weight: 600; }
+      .live-badge {
+        font-size: 12px; font-weight: 700; padding: 7px 12px; border-radius: 999px;
+        background: rgba(255, 176, 32, 0.15); color: var(--day);
+        border: 1px solid rgba(255, 176, 32, 0.3);
+      }
+      .live-badge.night { background: rgba(124, 108, 255, 0.15); color: var(--night); border-color: rgba(124, 108, 255, 0.3); }
+
       .card {
         background: var(--card);
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        padding: 16px;
+        border: 1px solid var(--card-border);
+        border-radius: var(--radius);
+        padding: 18px;
         margin-bottom: 16px;
+        backdrop-filter: blur(12px);
+        box-shadow: var(--shadow);
       }
-      .card h2 { font-size: 16px; margin: 0 0 12px; }
-      .screens { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-      @media (max-width: 620px) { .screens { grid-template-columns: 1fr; } }
-      .screen-label { font-weight: 600; margin-bottom: 6px; }
-      select, input[type="time"], button {
-        width: 100%;
-        padding: 10px 12px;
-        border-radius: 10px;
-        border: 1px solid var(--line);
-        background: #11141a;
-        color: var(--text);
-        font-size: 15px;
+      .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+      h2 { font-size: 15px; margin: 0 0 14px; font-weight: 700; letter-spacing: 0.2px; }
+      .card-head h2 { margin: 0; }
+      .hint { color: var(--muted); font-size: 12.5px; margin: 12px 0 0; line-height: 1.5; }
+
+      /* Segmented Tag/Abend live switch */
+      .seg {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+        background: rgba(0, 0, 0, 0.3); padding: 6px; border-radius: 14px; margin-bottom: 16px;
       }
-      label.row { display: block; margin-bottom: 12px; font-size: 14px; color: var(--muted); }
-      label.row span { display: block; margin-bottom: 6px; }
-      button {
-        background: var(--accent);
-        border: none;
-        font-weight: 600;
-        cursor: pointer;
-        margin-top: 8px;
+      .seg-btn {
+        border: none; border-radius: 10px; padding: 16px 8px; font-size: 16px; font-weight: 700;
+        color: var(--muted); background: transparent; cursor: pointer; transition: 0.2s;
       }
-      button.secondary { background: #2a2f3a; }
-      .videos li {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 8px 0;
-        border-bottom: 1px solid var(--line);
-        font-size: 14px;
+      .seg-btn.active[data-scene="day"] { background: linear-gradient(135deg, #ffb020, #ff8a00); color: #1a1200; box-shadow: 0 6px 18px rgba(255, 176, 32, 0.35); }
+      .seg-btn.active[data-scene="night"] { background: linear-gradient(135deg, #7c6cff, #5b46ff); color: #fff; box-shadow: 0 6px 18px rgba(124, 108, 255, 0.4); }
+
+      .screens-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+      @media (max-width: 560px) { .screens-row { grid-template-columns: 1fr; } }
+      .live-screen {
+        background: rgba(0, 0, 0, 0.25); border: 1px solid var(--card-border);
+        border-radius: 12px; padding: 12px; min-height: 78px;
       }
-      .videos { list-style: none; padding: 0; margin: 0; }
-      .videos button { width: auto; padding: 6px 10px; background: #3a2020; font-size: 13px; margin: 0; }
-      .upload-row { display: flex; gap: 8px; align-items: center; }
-      .upload-row input[type="file"] { flex: 1; color: var(--muted); }
+      .live-screen .pos { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
+      .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); display: inline-block; }
+      .dot.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+      .live-screen .name { font-size: 13.5px; margin-top: 8px; font-weight: 600; line-height: 1.3; word-break: break-word; }
+      .live-screen .name.empty { color: var(--muted); font-weight: 400; }
+
+      /* Tabs */
+      .tabs { display: flex; gap: 4px; background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 10px; }
+      .tab { border: none; background: transparent; color: var(--muted); padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; }
+      .tab.active { background: rgba(255, 255, 255, 0.1); color: var(--text); }
+
+      .slot-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+      @media (max-width: 560px) { .slot-grid { grid-template-columns: 1fr; } }
+      .slot {
+        background: rgba(0, 0, 0, 0.25); border: 1px solid var(--card-border);
+        border-radius: 12px; overflow: hidden;
+      }
+      .slot .thumb {
+        aspect-ratio: 16/9; background: #11141c center/cover no-repeat;
+        display: flex; align-items: center; justify-content: center; color: #3a4150; font-size: 12px;
+        position: relative;
+      }
+      .slot .pos { padding: 8px 10px 0; font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
+      .slot .name { padding: 4px 10px 8px; font-size: 12.5px; font-weight: 600; min-height: 30px; word-break: break-word; }
+      .slot .name.empty { color: var(--muted); font-weight: 400; }
+      .slot .acts { display: flex; gap: 6px; padding: 0 10px 10px; }
+
+      button.btn {
+        border: none; border-radius: 9px; padding: 9px 12px; font-size: 13px; font-weight: 600;
+        cursor: pointer; background: rgba(255, 255, 255, 0.08); color: var(--text); flex: 1;
+      }
+      button.btn.primary { background: var(--accent); color: #fff; }
+      button.btn.ghost { background: transparent; border: 1px solid var(--card-border); }
+      button.btn.danger { background: rgba(255, 84, 112, 0.15); color: var(--bad); }
+      button.btn:active { transform: scale(0.97); }
+
+      /* Auto switch */
+      .row-between { display: flex; align-items: center; justify-content: space-between; }
+      .toggle { position: relative; width: 50px; height: 28px; display: inline-block; }
+      .toggle input { display: none; }
+      .toggle .track { position: absolute; inset: 0; background: rgba(255,255,255,0.12); border-radius: 999px; transition: 0.2s; }
+      .toggle .track::after { content: ""; position: absolute; width: 22px; height: 22px; border-radius: 50%; background: #fff; top: 3px; left: 3px; transition: 0.2s; }
+      .toggle input:checked + .track { background: var(--ok); }
+      .toggle input:checked + .track::after { left: 25px; }
+      .time-row { display: flex; gap: 12px; margin-top: 14px; }
+      .field { flex: 1; }
+      .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+      input[type="time"], input[type="text"] {
+        width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--card-border);
+        background: rgba(0,0,0,0.3); color: var(--text); font-size: 15px; font-family: inherit;
+      }
+
+      /* Media grid */
+      .dropzone {
+        border: 1.5px dashed var(--card-border); border-radius: 12px; padding: 22px; text-align: center;
+        color: var(--muted); font-size: 13px; cursor: pointer; transition: 0.2s; margin-bottom: 14px;
+      }
+      .dropzone.drag { border-color: var(--accent); background: rgba(255,107,53,0.08); color: var(--text); }
+      .media-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      @media (max-width: 420px) { .media-grid { grid-template-columns: 1fr; } }
+      .media {
+        background: rgba(0,0,0,0.25); border: 1px solid var(--card-border); border-radius: 12px; overflow: hidden;
+      }
+      .media .thumb { aspect-ratio: 16/9; background: #11141c center/cover no-repeat; display: flex; align-items: center; justify-content: center; color: #3a4150; font-size: 11px; }
+      .media .meta { padding: 8px 10px 10px; }
+      .media .meta input { font-size: 13px; padding: 7px 9px; margin-bottom: 6px; }
+      .media .size { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+      .media .acts { display: flex; gap: 6px; }
+      progress { width: 100%; height: 8px; border-radius: 8px; overflow: hidden; margin-bottom: 12px; }
+
+      details.card > summary { cursor: pointer; font-weight: 700; font-size: 15px; list-style: none; }
+      details.card > summary::-webkit-details-marker { display: none; }
+      details.card > summary::after { content: " ⌄"; color: var(--muted); }
+      details[open].card > summary::after { content: " ⌃"; }
+      .sub { margin-top: 16px; }
+      .sub h3 { font-size: 13px; margin: 0 0 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+      .url-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; background: rgba(0,0,0,0.25); border-radius: 10px; margin-bottom: 8px; }
+      .url-item .lbl { font-size: 11px; color: var(--muted); }
+      .url-item .val { font-size: 14px; font-weight: 600; font-family: ui-monospace, monospace; word-break: break-all; }
+      .map-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+      .map-row span { width: 70px; font-size: 13px; color: var(--muted); }
+      select { flex: 1; padding: 10px; border-radius: 10px; background: rgba(0,0,0,0.3); color: var(--text); border: 1px solid var(--card-border); font-size: 14px; }
+
+      /* Modal */
+      .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: none; align-items: flex-end; z-index: 50; }
+      .modal.open { display: flex; }
+      .modal-card { background: var(--bg2); border-top-left-radius: 22px; border-top-right-radius: 22px; padding: 18px; width: 100%; max-height: 82vh; overflow-y: auto; box-shadow: 0 -10px 40px rgba(0,0,0,0.6); }
+      @media (min-width: 560px) { .modal { align-items: center; justify-content: center; } .modal-card { max-width: 560px; border-radius: 22px; } }
+      .modal-card h3 { margin: 4px 0 16px; font-size: 16px; }
+      .pick {
+        cursor: pointer; border: 2px solid transparent; border-radius: 12px; overflow: hidden;
+        background: rgba(0,0,0,0.25);
+      }
+      .pick.sel { border-color: var(--accent); }
+      .pick .thumb { aspect-ratio: 16/9; background: #11141c center/cover no-repeat; display: flex; align-items: center; justify-content: center; color: #3a4150; font-size: 11px; }
+      .pick .nm { padding: 7px 9px; font-size: 12px; font-weight: 600; word-break: break-word; }
+
       .toast {
-        position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
-        background: var(--ok); color: #06210f; padding: 10px 16px; border-radius: 10px;
-        font-weight: 600; opacity: 0; transition: opacity .25s; pointer-events: none;
+        position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px);
+        background: var(--ok); color: #04150c; font-weight: 700; padding: 12px 18px; border-radius: 12px;
+        opacity: 0; transition: 0.25s; pointer-events: none; z-index: 99; font-size: 14px;
       }
-      .toast.show { opacity: 1; }
-      .toast.err { background: var(--accent); color: #2a0a04; }
-      .switch { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-      .muted { color: var(--muted); font-size: 13px; }
-      .status-line { font-size: 14px; line-height: 1.5; }
-      .status-line .play { color: var(--muted); display: block; font-size: 12px; }
-      progress { width: 100%; height: 8px; }
+      .toast.show { opacity: 1; transform: translate(-50%, 0); }
+      .toast.err { background: var(--bad); color: #2a0410; }
     </style>
   </head>
   <body>
-    <h1>🍽️ Menu Board – Steuerung</h1>
-    <div class="sub">Mittags-/Abendmenue tauschen, Videos verwalten, Nachtbetrieb.</div>
+    <header>
+      <div class="brand">🍽️ Menu<span>Board</span></div>
+      <div class="live-badge" id="liveBadge">LIVE</div>
+    </header>
 
-    <div class="card">
-      <h2>Bildschirme</h2>
-      <div class="screens">
-        <div>
-          <div class="screen-label">⬅️ Links</div>
-          <select id="sel-left"></select>
+    <!-- LIVE -->
+    <section class="card">
+      <h2>Was läuft gerade live?</h2>
+      <div class="seg" id="liveSwitch">
+        <button class="seg-btn" data-scene="day">☀️ Tag</button>
+        <button class="seg-btn" data-scene="night">🌙 Abend</button>
+      </div>
+      <div class="screens-row" id="liveScreens"></div>
+    </section>
+
+    <!-- SCENE EDITOR -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Szene bearbeiten</h2>
+        <div class="tabs" id="sceneTabs">
+          <button class="tab" data-scene="day">☀️ Tag</button>
+          <button class="tab" data-scene="night">🌙 Abend</button>
         </div>
-        <div>
-          <div class="screen-label">⏺️ Mitte</div>
-          <select id="sel-middle"></select>
+      </div>
+      <div class="slot-grid" id="slotGrid"></div>
+      <p class="hint" id="editHint"></p>
+    </section>
+
+    <!-- AUTO SWITCH -->
+    <section class="card">
+      <div class="row-between">
+        <h2 style="margin:0">Automatik Tag → Abend</h2>
+        <label class="toggle"><input type="checkbox" id="autoEnabled" /><span class="track"></span></label>
+      </div>
+      <div class="time-row">
+        <div class="field"><label>Tag ab</label><input type="time" id="dayStart" value="11:00" /></div>
+        <div class="field"><label>Abend ab</label><input type="time" id="nightStart" value="17:00" /></div>
+      </div>
+      <button class="btn primary" id="saveAuto" style="margin-top:14px; width:100%">Automatik speichern</button>
+      <p class="hint">Wenn aktiv, schaltet das Board selbst zwischen Tag- und Abend-Szene um.</p>
+    </section>
+
+    <!-- MEDIA -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Mediathek</h2>
+      </div>
+      <div class="dropzone" id="dropzone">📁 Video hierher ziehen oder tippen zum Auswählen</div>
+      <input type="file" id="fileInput" accept="video/*" hidden />
+      <progress id="prog" value="0" max="100" hidden></progress>
+      <div class="media-grid" id="mediaGrid"></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <details class="card">
+      <summary>⚙️ Einstellungen &amp; Wartung</summary>
+
+      <div class="sub">
+        <h3>Zugriff (so öffnest du das Dashboard)</h3>
+        <div id="accessList"></div>
+      </div>
+
+      <div class="sub">
+        <h3>Nachtbetrieb (Schlafen &amp; Aufwachen)</h3>
+        <div class="row-between" style="margin-bottom:12px">
+          <span style="font-size:14px">Automatik aktiv</span>
+          <label class="toggle"><input type="checkbox" id="schedEnabled" /><span class="track"></span></label>
         </div>
-        <div>
-          <div class="screen-label">➡️ Rechts</div>
-          <select id="sel-right"></select>
+        <div class="time-row">
+          <div class="field"><label>Schlafen um</label><input type="time" id="sleepTime" value="23:30" /></div>
+          <div class="field"><label>Aufwachen um</label><input type="time" id="wakeTime" value="08:30" /></div>
         </div>
+        <button class="btn primary" id="saveSched" style="margin-top:12px; width:100%">Zeitplan speichern</button>
+        <p class="hint" id="schedNote"></p>
       </div>
-      <div class="muted" style="margin-top:10px">Aenderung wird sofort auf dem Bildschirm uebernommen.</div>
-    </div>
 
-    <div class="card">
-      <h2>Status (laeuft alles?)</h2>
-      <div class="screens" id="statusGrid">
-        <div><div class="screen-label">⬅️ Links</div><div class="status-line" id="st-left">…</div></div>
-        <div><div class="screen-label">⏺️ Mitte</div><div class="status-line" id="st-middle">…</div></div>
-        <div><div class="screen-label">➡️ Rechts</div><div class="status-line" id="st-right">…</div></div>
+      <div class="sub">
+        <h3>Monitor-Zuordnung</h3>
+        <div class="map-row"><span>⬅️ Links</span><select id="map-left"></select></div>
+        <div class="map-row"><span>⏺️ Mitte</span><select id="map-middle"></select></div>
+        <div class="map-row"><span>➡️ Rechts</span><select id="map-right"></select></div>
+        <button class="btn primary" id="saveMapping" style="margin-top:8px; width:100%">Zuordnung anwenden</button>
       </div>
-      <div class="muted" style="margin-top:10px">🟢 = Bildschirm laeuft &amp; ist verbunden, 🔴 = kein Bild/offline.</div>
-    </div>
 
-    <div class="card">
-      <h2>Monitor-Zuordnung (verteilen)</h2>
-      <div class="muted" style="margin-bottom:10px">Falls links/Mitte/rechts vertauscht sind: hier dem richtigen Monitor zuordnen.</div>
-      <div class="screens">
-        <div><div class="screen-label">⬅️ Links</div><select id="map-left"></select></div>
-        <div><div class="screen-label">⏺️ Mitte</div><select id="map-middle"></select></div>
-        <div><div class="screen-label">➡️ Rechts</div><select id="map-right"></select></div>
+      <div class="sub">
+        <h3>Wartung</h3>
+        <button class="btn ghost" id="restartBtn" style="width:100%; margin-bottom:8px">🔄 Player neu starten</button>
+        <button class="btn ghost" id="sleepBtn" style="width:100%">😴 PC jetzt schlafen legen</button>
       </div>
-      <button id="saveMapping">Zuordnung speichern &amp; anwenden</button>
-    </div>
+    </details>
 
-    <div class="card">
-      <h2>Video hochladen</h2>
-      <div class="upload-row">
-        <input type="file" id="file" accept="video/*" />
-        <button id="uploadBtn" style="width:auto">Hochladen</button>
+    <!-- PICKER MODAL -->
+    <div class="modal" id="picker">
+      <div class="modal-card">
+        <h3 id="pickerTitle">Video wählen</h3>
+        <div class="media-grid" id="pickerGrid"></div>
+        <button class="btn ghost" id="pickerClose" style="width:100%; margin-top:14px">Schließen</button>
       </div>
-      <progress id="prog" value="0" max="100" style="display:none; margin-top:10px"></progress>
-      <ul class="videos" id="videoList"></ul>
-    </div>
-
-    <div class="card">
-      <h2>Nachtbetrieb (automatisch Schlafen &amp; Aufwachen)</h2>
-      <div class="switch">
-        <input type="checkbox" id="schedEnabled" />
-        <label for="schedEnabled">Automatik aktiv</label>
-      </div>
-      <label class="row">
-        <span>Schlafen um (abends)</span>
-        <input type="time" id="sleepTime" value="23:30" />
-      </label>
-      <label class="row">
-        <span>Aufwachen um (morgens)</span>
-        <input type="time" id="wakeTime" value="08:30" />
-      </label>
-      <button id="saveSched">Zeitplan speichern</button>
-      <div class="muted" id="schedNote" style="margin-top:10px"></div>
-    </div>
-
-    <div class="card">
-      <h2>Sofort-Aktionen</h2>
-      <button class="secondary" id="restartBtn">Player neu starten (Bildschirme aktualisieren)</button>
-      <button class="secondary" id="sleepBtn">PC jetzt in den Schlaf schicken</button>
     </div>
 
     <div class="toast" id="toast"></div>
@@ -165,68 +291,214 @@
     <script>
       const $ = (id) => document.getElementById(id);
       const slots = ["left", "middle", "right"];
-      const slotName = { left: "Links", middle: "Mitte", right: "Rechts" };
+      const posName = { left: "⬅️ Links", middle: "⏺️ Mitte", right: "➡️ Rechts" };
+      const sceneName = { day: "Tag", night: "Abend" };
+
       let state = null;
       let playerStatus = { left: false, middle: false, right: false };
+      let editScene = "day";
+      let pickerTarget = null;
 
-      function toast(msg, isErr) {
+      // ---- toast ----
+      function toast(msg, err) {
         const t = $("toast");
         t.textContent = msg;
-        t.className = "toast show" + (isErr ? " err" : "");
-        setTimeout(() => (t.className = "toast"), 2200);
+        t.className = "toast show" + (err ? " err" : "");
+        clearTimeout(t._t);
+        t._t = setTimeout(() => (t.className = "toast"), 2400);
       }
 
-      function fillSelect(sel, videos, currentId) {
-        sel.innerHTML = "";
-        const none = document.createElement("option");
-        none.value = "";
-        none.textContent = "— leer —";
-        sel.appendChild(none);
-        for (const v of videos) {
-          const o = document.createElement("option");
-          o.value = v.id;
-          o.textContent = v.name;
-          if (v.id === currentId) o.selected = true;
-          sel.appendChild(o);
-        }
+      // ---- thumbnails (generated once per video, cached) ----
+      const thumbs = {};
+      const thumbQueue = [];
+      let thumbBusy = false;
+      function videoById(id) { return (state.videos || []).find((v) => v.id === id); }
+      function videoUrlById(id) { const v = videoById(id); return v ? "/media/" + v.file : null; }
+
+      function requestThumb(id, cb) {
+        if (!id) return cb(null);
+        if (thumbs[id]) return cb(thumbs[id]);
+        thumbQueue.push({ id, cb });
+        pumpThumbs();
+      }
+      function pumpThumbs() {
+        if (thumbBusy || thumbQueue.length === 0) return;
+        const { id, cb } = thumbQueue.shift();
+        if (thumbs[id]) { cb(thumbs[id]); return pumpThumbs(); }
+        const url = videoUrlById(id);
+        if (!url) { cb(null); return pumpThumbs(); }
+        thumbBusy = true;
+        const v = document.createElement("video");
+        v.muted = true; v.preload = "auto"; v.src = url; v.crossOrigin = "anonymous";
+        let done = false;
+        const finish = (data) => {
+          if (done) return; done = true; thumbBusy = false;
+          if (data) thumbs[id] = data;
+          cb(data); setTimeout(pumpThumbs, 0);
+        };
+        v.onloadeddata = () => { try { v.currentTime = Math.min(1, (v.duration || 2) * 0.1); } catch (_) { finish(null); } };
+        v.onseeked = () => {
+          try {
+            const c = document.createElement("canvas");
+            c.width = 320; c.height = 180;
+            c.getContext("2d").drawImage(v, 0, 0, 320, 180);
+            finish(c.toDataURL("image/jpeg", 0.7));
+          } catch (_) { finish(null); }
+        };
+        v.onerror = () => finish(null);
+        setTimeout(() => finish(null), 8000); // safety timeout
+      }
+      function applyThumb(el, id) {
+        requestThumb(id, (data) => {
+          if (data) { el.style.backgroundImage = `url(${data})`; el.textContent = ""; }
+          else el.textContent = "▶";
+        });
       }
 
-      function render() {
-        const videos = state.videos || [];
+      // ---- render: live ----
+      function renderLive() {
+        if (!state) return;
+        $("liveBadge").textContent = "LIVE: " + sceneName[state.liveScene];
+        $("liveBadge").className = "live-badge" + (state.liveScene === "night" ? " night" : "");
+        document.querySelectorAll("#liveSwitch .seg-btn").forEach((b) => {
+          b.classList.toggle("active", b.dataset.scene === state.liveScene);
+        });
+        const row = $("liveScreens");
+        row.innerHTML = "";
+        const liveSlots = state.scenes[state.liveScene];
         for (const slot of slots) {
-          fillSelect($("sel-" + slot), videos, state.screens[slot].videoId);
+          const v = videoById(liveSlots[slot]);
+          const el = document.createElement("div");
+          el.className = "live-screen";
+          el.innerHTML =
+            `<div class="pos"><span class="dot ${playerStatus[slot] ? "on" : ""}"></span>${posName[slot]}</div>` +
+            `<div class="name ${v ? "" : "empty"}">${v ? escapeHtml(v.name) : "— leer —"}</div>`;
+          row.appendChild(el);
         }
-        const list = $("videoList");
-        list.innerHTML = "";
-        for (const v of videos) {
-          const li = document.createElement("li");
-          const span = document.createElement("span");
-          span.textContent = v.name + "  (" + Math.round(v.size / 1048576) + " MB)";
-          const del = document.createElement("button");
-          del.textContent = "Loeschen";
-          del.onclick = () => deleteVideo(v.id);
-          li.appendChild(span);
-          li.appendChild(del);
-          list.appendChild(li);
+      }
+
+      // ---- render: scene editor ----
+      function renderScenes() {
+        if (!state) return;
+        document.querySelectorAll("#sceneTabs .tab").forEach((t) => t.classList.toggle("active", t.dataset.scene === editScene));
+        const grid = $("slotGrid");
+        grid.innerHTML = "";
+        const sc = state.scenes[editScene];
+        for (const slot of slots) {
+          const v = videoById(sc[slot]);
+          const card = document.createElement("div");
+          card.className = "slot";
+          card.innerHTML =
+            `<div class="thumb"></div>` +
+            `<div class="pos">${posName[slot]}</div>` +
+            `<div class="name ${v ? "" : "empty"}">${v ? escapeHtml(v.name) : "— leer —"}</div>` +
+            `<div class="acts"></div>`;
+          const thumb = card.querySelector(".thumb");
+          if (v) applyThumb(thumb, v.id); else thumb.textContent = "leer";
+          const acts = card.querySelector(".acts");
+          const change = document.createElement("button");
+          change.className = "btn primary"; change.textContent = v ? "Ändern" : "Wählen";
+          change.onclick = () => openPicker(editScene, slot);
+          acts.appendChild(change);
+          if (v) {
+            const clr = document.createElement("button");
+            clr.className = "btn ghost"; clr.textContent = "✕";
+            clr.style.flex = "0 0 auto";
+            clr.onclick = () => assign(editScene, slot, null);
+            acts.appendChild(clr);
+          }
+          grid.appendChild(card);
         }
+        $("editHint").textContent =
+          editScene === state.liveScene
+            ? "Diese Szene ist gerade LIVE – Änderungen erscheinen sofort."
+            : "Diese Szene ist nicht live. Oben auf „" + sceneName[editScene] + "“ tippen, um sie zu zeigen.";
+      }
+
+      // ---- render: media ----
+      function renderMedia() {
+        if (!state) return;
+        const grid = $("mediaGrid");
+        grid.innerHTML = "";
+        if (!state.videos.length) {
+          grid.innerHTML = `<div class="hint" style="grid-column:1/-1">Noch keine Videos. Oben hochladen.</div>`;
+          return;
+        }
+        for (const v of state.videos) {
+          const el = document.createElement("div");
+          el.className = "media";
+          el.innerHTML =
+            `<div class="thumb"></div>` +
+            `<div class="meta">` +
+            `<input type="text" value="${escapeAttr(v.name)}" />` +
+            `<div class="size">${(v.size / 1048576).toFixed(0)} MB</div>` +
+            `<div class="acts">` +
+            `<button class="btn danger">Löschen</button>` +
+            `</div></div>`;
+          applyThumb(el.querySelector(".thumb"), v.id);
+          const input = el.querySelector("input");
+          const saveName = () => { if (input.value.trim() && input.value !== v.name) renameVideo(v.id, input.value.trim()); };
+          input.onblur = saveName;
+          input.onkeydown = (e) => { if (e.key === "Enter") input.blur(); };
+          el.querySelector(".danger").onclick = () => deleteVideo(v.id, v.name);
+          grid.appendChild(el);
+        }
+      }
+
+      // ---- render: settings ----
+      function renderSettings() {
+        if (!state) return;
         const s = state.schedule || {};
         $("schedEnabled").checked = !!s.enabled;
         if (s.sleepTime) $("sleepTime").value = s.sleepTime;
         if (s.wakeTime) $("wakeTime").value = s.wakeTime;
-        renderStatus();
+        const a = state.autoSwitch || {};
+        $("autoEnabled").checked = !!a.enabled;
+        if (a.dayStart) $("dayStart").value = a.dayStart;
+        if (a.nightStart) $("nightStart").value = a.nightStart;
       }
 
-      function renderStatus() {
-        if (!state) return;
-        for (const slot of slots) {
-          const online = playerStatus[slot];
-          const videoId = state.screens[slot].videoId;
-          const vid = (state.videos || []).find((v) => v.id === videoId);
-          const playing = vid ? vid.name : "— kein Video —";
-          $("st-" + slot).innerHTML =
-            (online ? "🟢 verbunden" : "🔴 offline") +
-            '<span class="play">spielt: ' + playing + "</span>";
+      function renderAll() { renderLive(); renderScenes(); renderMedia(); renderSettings(); }
+
+      // ---- picker ----
+      function openPicker(scene, slot) {
+        pickerTarget = { scene, slot };
+        $("pickerTitle").textContent = "Video für " + posName[slot] + " (" + sceneName[scene] + ")";
+        const grid = $("pickerGrid");
+        grid.innerHTML = "";
+        const current = state.scenes[scene][slot];
+        if (!state.videos.length) {
+          grid.innerHTML = `<div class="hint" style="grid-column:1/-1">Erst ein Video in der Mediathek hochladen.</div>`;
         }
+        for (const v of state.videos) {
+          const el = document.createElement("div");
+          el.className = "pick" + (v.id === current ? " sel" : "");
+          el.innerHTML = `<div class="thumb"></div><div class="nm">${escapeHtml(v.name)}</div>`;
+          applyThumb(el.querySelector(".thumb"), v.id);
+          el.onclick = () => { assign(scene, slot, v.id); closePicker(); };
+          grid.appendChild(el);
+        }
+        $("picker").classList.add("open");
+      }
+      function closePicker() { $("picker").classList.remove("open"); }
+
+      // ---- API ----
+      async function api(path, body) {
+        const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        return r.json().catch(() => ({}));
+      }
+      async function loadState() {
+        state = await fetch("/api/state").then((r) => r.json());
+        renderAll();
+        loadDisplays();
+        loadAccess();
+      }
+      async function setLive(scene) { await api("/api/scene/live", { scene }); toast("Live: " + sceneName[scene]); }
+      async function assign(scene, slot, videoId) { await api("/api/scene/assign", { scene, slot, videoId }); toast("Gespeichert"); }
+      async function renameVideo(id, name) { await api("/api/video/rename", { id, name }); toast("Umbenannt"); }
+      async function deleteVideo(id, name) {
+        if (!confirm('Video "' + name + '" löschen?')) return;
+        await api("/api/video/delete", { id }); toast("Gelöscht");
       }
 
       async function loadDisplays() {
@@ -235,11 +507,7 @@
           const mapping = (state && state.displayMapping) || {};
           for (const slot of slots) {
             const sel = $("map-" + slot);
-            sel.innerHTML = "";
-            const auto = document.createElement("option");
-            auto.value = "";
-            auto.textContent = "Automatisch";
-            sel.appendChild(auto);
+            sel.innerHTML = `<option value="">Automatisch</option>`;
             for (const d of displays) {
               const o = document.createElement("option");
               o.value = String(d.id);
@@ -250,134 +518,86 @@
           }
         } catch (_) {}
       }
-
-      async function loadState() {
-        state = await fetch("/api/state").then((r) => r.json());
-        render();
-        loadDisplays();
+      async function loadAccess() {
+        try {
+          const { urls } = await fetch("/api/access").then((r) => r.json());
+          $("accessList").innerHTML = urls
+            .map((u) => `<div class="url-item"><span class="lbl">${escapeHtml(u.label)}</span><span class="val">${escapeHtml(u.url)}</span></div>`)
+            .join("");
+        } catch (_) {}
       }
+
+      // ---- events ----
+      $("liveSwitch").addEventListener("click", (e) => { const b = e.target.closest(".seg-btn"); if (b) setLive(b.dataset.scene); });
+      $("sceneTabs").addEventListener("click", (e) => { const t = e.target.closest(".tab"); if (t) { editScene = t.dataset.scene; renderScenes(); } });
+      $("pickerClose").addEventListener("click", closePicker);
+      $("picker").addEventListener("click", (e) => { if (e.target.id === "picker") closePicker(); });
+
+      $("saveAuto").addEventListener("click", async () => {
+        await api("/api/autoswitch", { enabled: $("autoEnabled").checked, dayStart: $("dayStart").value, nightStart: $("nightStart").value });
+        toast("Automatik gespeichert");
+      });
+
+      $("saveSched").addEventListener("click", async () => {
+        const body = { enabled: $("schedEnabled").checked, sleepTime: $("sleepTime").value, wakeTime: $("wakeTime").value };
+        const res = await api("/api/schedule", body);
+        if (res.applyResult && res.applyResult.error) {
+          $("schedNote").textContent = "Hinweis: " + (res.applyResult.hint || res.applyResult.error);
+          toast("Gespeichert (Zeitplan nicht angewandt)", true);
+        } else if (res.applyResult && res.applyResult.skipped) {
+          $("schedNote").textContent = "Gespeichert (greift nur auf dem Windows-PC).";
+          toast("Zeitplan gespeichert");
+        } else {
+          $("schedNote").textContent = "Aktiv: schlafen " + body.sleepTime + ", aufwachen " + body.wakeTime + ".";
+          toast("Zeitplan gespeichert");
+        }
+      });
 
       $("saveMapping").addEventListener("click", async () => {
         const mapping = {};
-        for (const slot of slots) {
-          const v = $("map-" + slot).value;
-          mapping[slot] = v === "" ? null : Number(v);
-        }
-        await fetch("/api/displays", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(mapping),
-        });
-        toast("Zuordnung gespeichert – Bildschirme starten neu");
+        for (const slot of slots) { const v = $("map-" + slot).value; mapping[slot] = v === "" ? null : Number(v); }
+        await api("/api/displays", mapping);
+        toast("Zuordnung gespeichert – Player starten neu");
       });
 
-      for (const slot of slots) {
-        $("sel-" + slot).addEventListener("change", async (e) => {
-          await fetch("/api/assign", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ slot, videoId: e.target.value || null }),
-          });
-          toast("Bildschirm aktualisiert");
-        });
-      }
+      $("restartBtn").addEventListener("click", async () => { await api("/api/power", { action: "restart-players" }); toast("Player werden neu gestartet"); });
+      $("sleepBtn").addEventListener("click", async () => { if (confirm("PC jetzt in den Schlaf schicken?")) await api("/api/power", { action: "sleep" }); });
 
-      $("uploadBtn").addEventListener("click", () => {
-        const f = $("file").files[0];
-        if (!f) return toast("Bitte erst eine Datei waehlen", true);
+      // ---- upload ----
+      const dz = $("dropzone");
+      dz.addEventListener("click", () => $("fileInput").click());
+      $("fileInput").addEventListener("change", (e) => { if (e.target.files[0]) uploadFile(e.target.files[0]); });
+      ["dragenter", "dragover"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add("drag"); }));
+      ["dragleave", "drop"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove("drag"); }));
+      dz.addEventListener("drop", (e) => { const f = e.dataTransfer.files[0]; if (f) uploadFile(f); });
+
+      function uploadFile(file) {
         const fd = new FormData();
-        fd.append("video", f);
+        fd.append("video", file);
         const xhr = new XMLHttpRequest();
         xhr.open("POST", "/api/upload");
         const prog = $("prog");
-        prog.style.display = "block";
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) prog.value = (e.loaded / e.total) * 100;
-        };
+        prog.hidden = false; prog.value = 0;
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) prog.value = (e.loaded / e.total) * 100; };
         xhr.onload = () => {
-          prog.style.display = "none";
-          prog.value = 0;
-          if (xhr.status === 200) {
-            $("file").value = "";
-            toast("Video hochgeladen");
-            loadState();
-          } else {
-            toast("Upload fehlgeschlagen", true);
-          }
+          prog.hidden = true; $("fileInput").value = "";
+          if (xhr.status === 200) toast("Video hochgeladen"); else toast("Upload fehlgeschlagen", true);
         };
-        xhr.onerror = () => {
-          prog.style.display = "none";
-          toast("Upload fehlgeschlagen", true);
-        };
+        xhr.onerror = () => { prog.hidden = true; toast("Upload fehlgeschlagen", true); };
         xhr.send(fd);
-      });
-
-      async function deleteVideo(id) {
-        if (!confirm("Dieses Video wirklich loeschen?")) return;
-        await fetch("/api/video/delete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id }),
-        });
-        toast("Video geloescht");
-        loadState();
       }
 
-      $("saveSched").addEventListener("click", async () => {
-        const body = {
-          enabled: $("schedEnabled").checked,
-          sleepTime: $("sleepTime").value,
-          wakeTime: $("wakeTime").value,
-        };
-        const res = await fetch("/api/schedule", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        }).then((r) => r.json());
-        if (res.applyResult && res.applyResult.error) {
-          $("schedNote").textContent = "Hinweis: " + (res.applyResult.hint || res.applyResult.error);
-          toast("Gespeichert, aber Zeitplan nicht angewandt", true);
-        } else if (res.applyResult && res.applyResult.skipped) {
-          $("schedNote").textContent = "Zeitplan gespeichert (greift nur auf dem Windows-PC).";
-          toast("Zeitplan gespeichert");
-        } else {
-          $("schedNote").textContent = "Zeitplan aktiv: schlafen " + body.sleepTime + ", aufwachen " + body.wakeTime + ".";
-          toast("Zeitplan gespeichert");
-        }
-      });
+      // ---- utils ----
+      function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+      function escapeAttr(s) { return escapeHtml(s); }
 
-      $("restartBtn").addEventListener("click", async () => {
-        await fetch("/api/power", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "restart-players" }),
-        });
-        toast("Player werden neu gestartet");
-      });
-
-      $("sleepBtn").addEventListener("click", async () => {
-        if (!confirm("PC jetzt in den Schlafmodus schicken?")) return;
-        await fetch("/api/power", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "sleep" }),
-        });
-      });
-
-      // Live updates from the server.
+      // ---- live updates ----
       function connectWs() {
         const ws = new WebSocket("ws://" + location.host);
         ws.onmessage = (ev) => {
-          try {
-            const msg = JSON.parse(ev.data);
-            if (msg.type === "state") {
-              state = msg.state;
-              render();
-            } else if (msg.type === "status") {
-              playerStatus = msg.players;
-              renderStatus();
-            }
-          } catch (_) {}
+          let msg; try { msg = JSON.parse(ev.data); } catch (_) { return; }
+          if (msg.type === "state") { state = msg.state; renderAll(); }
+          else if (msg.type === "status") { playerStatus = msg.players; renderLive(); }
         };
         ws.onclose = () => setTimeout(connectWs, 2000);
       }

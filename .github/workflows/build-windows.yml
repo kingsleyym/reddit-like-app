@@ -1,0 +1,36 @@
+name: Build Windows .exe
+
+# Baut die fertige MenuBoard-Setup.exe auf einem echten Windows-Rechner.
+# Laeuft automatisch bei jedem Push und kann manuell gestartet werden.
+on:
+  push:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build installer
+        run: npm run dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MenuBoard-Setup
+          path: dist/*.exe
+          if-no-files-found: error

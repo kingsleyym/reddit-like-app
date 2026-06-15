@@ -29,6 +29,11 @@ const DEFAULT_STATE = {
     wakeTime: "08:30",
   },
   displayMapping: { left: null, middle: null, right: null },
+  // Start automatically with Windows. Maintenance mode is runtime-only:
+  // it is reset to false on every app start so a reboot always brings the
+  // board back.
+  autostart: true,
+  maintenance: false,
 };
 
 class Store {
@@ -56,6 +61,8 @@ class Store {
         autoSwitch: { ...d.autoSwitch, ...(parsed.autoSwitch || {}) },
         schedule: { ...d.schedule, ...(parsed.schedule || {}) },
         displayMapping: { ...d.displayMapping, ...(parsed.displayMapping || {}) },
+        autostart: parsed.autostart !== undefined ? !!parsed.autostart : true,
+        maintenance: false,
       };
 
       // Migration from the old flat "screens" model: seed both scenes with it.
@@ -139,6 +146,18 @@ class Store {
   setDisplayMapping(mapping) {
     this.state.displayMapping = { ...this.state.displayMapping, ...mapping };
     this.save();
+  }
+
+  setAutostart(enabled) {
+    this.state.autostart = !!enabled;
+    this.save();
+    return this.state.autostart;
+  }
+
+  setMaintenance(enabled) {
+    this.state.maintenance = !!enabled;
+    this.save();
+    return this.state.maintenance;
   }
 }
 

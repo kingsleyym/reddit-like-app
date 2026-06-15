@@ -19,6 +19,9 @@ function startServer(opts) {
     onPower,
     onDisplayMapping,
     getDisplays,
+    onMaintenance,
+    onAutostart,
+    onOpenFolder,
   } = opts;
 
   fs.mkdirSync(mediaDir, { recursive: true });
@@ -145,6 +148,34 @@ function startServer(opts) {
     res.json({ ok: true, displayMapping: store.getState().displayMapping });
   });
 
+  // --- Maintenance mode (stop the kiosk players so you can use the PC) -----
+  app.post("/api/maintenance", async (req, res) => {
+    const enabled = !!(req.body && req.body.enabled);
+    store.setMaintenance(enabled);
+    if (onMaintenance) {
+      try {
+        await onMaintenance(enabled);
+      } catch (_) {}
+    }
+    broadcastState();
+    res.json({ ok: true, maintenance: enabled });
+  });
+
+  // --- Autostart with Windows ---------------------------------------------
+  app.post("/api/autostart", (req, res) => {
+    const enabled = !!(req.body && req.body.enabled);
+    store.setAutostart(enabled);
+    if (onAutostart) onAutostart(enabled);
+    broadcastState();
+    res.json({ ok: true, autostart: enabled });
+  });
+
+  // --- Open the media folder on the PC ------------------------------------
+  app.post("/api/open-folder", (req, res) => {
+    if (onOpenFolder) onOpenFolder();
+    res.json({ ok: true });
+  });
+
   // --- Access URLs (how to reach the dashboard from phone/home) ------------
   app.get("/api/access", (req, res) => res.json({ urls: accessUrls() }));
 
@@ -213,6 +244,9 @@ function startServer(opts) {
       autoSwitch: s.autoSwitch,
       schedule: s.schedule,
       displayMapping: s.displayMapping,
+      autostart: s.autostart,
+      maintenance: s.maintenance,
+      paths: { media: mediaDir, config: store.dataFile },
       live: liveUrls(),
     };
   }

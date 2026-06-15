@@ -85,6 +85,36 @@ Im Dashboard unter „Nachtbetrieb":
 
 ---
 
+## Wo liegen die Dateien?
+
+Alles lokal auf dem PC unter dem Windows-Benutzerprofil:
+
+```
+C:\Users\<Name>\AppData\Roaming\MenuBoard\
+  media\        ← alle hochgeladenen Videos
+  config.json   ← Einstellungen (Szenen, Zeitplan, Zuordnung)
+```
+
+Schnellzugriff: im Explorer `%AppData%\MenuBoard` in die Adresszeile eingeben.
+Im Dashboard zeigen **Einstellungen → Speicherort** den genauen Pfad an, plus
+einen Knopf „Medien-Ordner öffnen".
+
+## Wartungsmodus & Autostart
+
+- **Autostart mit Windows**: standardmäßig an. Im Dashboard abschaltbar.
+- **Wartungsmodus**: schließt die Vollbild-Player, damit der PC bedienbar ist
+  (z. B. für Einstellungen). Die App bleibt im Tray, der Player kommt nicht von
+  selbst zurück, bis der Modus wieder aus ist. Erreichbar über das Dashboard
+  oder das Tray-Symbol (Rechtsklick). Nach einem Neustart läuft das Board
+  automatisch wieder normal.
+
+## Wie funktioniert der Fernzugriff (Tailscale)?
+
+Tailscale ist nur die **sichere Leitung** zum PC – ein verschlüsselter privater
+Tunnel. Die App-Kommunikation läuft immer über denselben **lokalen Server** auf
+dem PC (Port 8787). Ob im Lokal (WLAN) oder von zu Hause (Tailscale): es ist
+derselbe Server, nur der Weg dorthin unterscheidet sich.
+
 ## Mit nur einem Monitor testen
 
 Die App läuft auch mit einem einzigen Bildschirm: Sie legt dann nur ein

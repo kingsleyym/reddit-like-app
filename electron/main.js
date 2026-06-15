@@ -25,6 +25,8 @@ let playerWindows = {};
 let dashboardWindow = null;
 let tray = null;
 let quitting = false;
+let maintenance = false; // when true, players are closed and do not auto-reopen
+let mediaDir = null;
 let serverInfo = null;
 
 function userDataPaths() {
@@ -71,7 +73,7 @@ function createPlayerWindow(slot, display) {
   win.loadURL(playerUrl(slot));
   win.on("closed", () => {
     playerWindows[slot] = null;
-    if (!quitting) {
+    if (!quitting && !maintenance) {
       setTimeout(() => {
         const displays = resolveDisplaysForSlots();
         createPlayerWindow(slot, displays[slot]);
@@ -82,8 +84,29 @@ function createPlayerWindow(slot, display) {
 }
 
 function createAllPlayers() {
+  if (maintenance) return;
   const displays = resolveDisplaysForSlots();
   for (const slot of SLOTS) if (!playerWindows[slot]) createPlayerWindow(slot, displays[slot]);
+}
+
+function closeAllPlayers() {
+  for (const slot of SLOTS) {
+    const win = playerWindows[slot];
+    if (win && !win.isDestroyed()) {
+      win.removeAllListeners("closed");
+      win.close();
+    }
+    playerWindows[slot] = null;
+  }
+}
+
+// Maintenance mode: close the fullscreen kiosk players so the Windows desktop
+// is usable for configuration, without quitting the app (it stays in the tray).
+function applyMaintenance(enabled) {
+  maintenance = enabled;
+  if (enabled) closeAllPlayers();
+  else setTimeout(createAllPlayers, 300);
+  if (tray) tray.setContextMenu(buildMenu());
 }
 
 function recreateAllPlayers() {
@@ -155,22 +178,26 @@ function checkAutoSwitch() {
   }
 }
 
-function buildTray() {
-  let icon;
-  try {
-    icon = nativeImage.createFromPath(path.join(__dirname, "..", "assets", "tray-icon.png"));
-  } catch (_) {
-    icon = nativeImage.createEmpty();
-  }
-  tray = new Tray(icon);
-  tray.setToolTip("MenuBoard");
-  const menu = Menu.buildFromTemplate([
+function buildMenu() {
+  return Menu.buildFromTemplate([
     { label: "Dashboard öffnen", click: openDashboardWindow },
     {
       label: "Dashboard im Browser öffnen",
       click: () => shell.openExternal(`http://localhost:${PORT}/dashboard`),
     },
+    { type: "separator" },
     { label: "Player neu starten", click: recreateAllPlayers },
+    {
+      label: "Wartungsmodus (Player schließen)",
+      type: "checkbox",
+      checked: maintenance,
+      click: (item) => {
+        store.setMaintenance(item.checked);
+        applyMaintenance(item.checked);
+        if (serverInfo) serverInfo.broadcastState();
+      },
+    },
+    { label: "Medien-Ordner öffnen", click: () => mediaDir && shell.openPath(mediaDir) },
     { type: "separator" },
     {
       label: "Beenden",
@@ -180,17 +207,33 @@ function buildTray() {
       },
     },
   ]);
-  tray.setContextMenu(menu);
+}
+
+function buildTray() {
+  let icon;
+  try {
+    icon = nativeImage.createFromPath(path.join(__dirname, "..", "assets", "tray-icon.png"));
+  } catch (_) {
+    icon = nativeImage.createEmpty();
+  }
+  tray = new Tray(icon);
+  tray.setToolTip("MenuBoard");
+  tray.setContextMenu(buildMenu());
   tray.on("double-click", openDashboardWindow);
 }
 
 app.whenReady().then(async () => {
-  const { dataFile, mediaDir } = userDataPaths();
-  store = new Store(dataFile);
+  const paths = userDataPaths();
+  mediaDir = paths.mediaDir;
+  store = new Store(paths.dataFile);
+
+  // Maintenance is temporary: always start the board running after a launch.
+  store.setMaintenance(false);
+  maintenance = false;
 
   powerSaveBlocker.start("prevent-display-sleep");
   try {
-    app.setLoginItemSettings({ openAtLogin: true });
+    app.setLoginItemSettings({ openAtLogin: store.getState().autostart !== false });
   } catch (_) {}
 
   serverInfo = await startServer({
@@ -201,6 +244,13 @@ app.whenReady().then(async () => {
     onPower: (action) => runPowerAction(action, { recreateAllPlayers }),
     onDisplayMapping: () => recreateAllPlayers(),
     getDisplays: () => listDisplays(),
+    onMaintenance: (enabled) => applyMaintenance(enabled),
+    onAutostart: (enabled) => {
+      try {
+        app.setLoginItemSettings({ openAtLogin: enabled });
+      } catch (_) {}
+    },
+    onOpenFolder: () => mediaDir && shell.openPath(mediaDir),
   });
 
   createAllPlayers();

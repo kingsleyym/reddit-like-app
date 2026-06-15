@@ -249,6 +249,26 @@
       </div>
 
       <div class="sub">
+        <h3>Speicherort auf dem PC</h3>
+        <div class="url-item"><span class="lbl">Videos</span><span class="val" id="pathMedia">…</span></div>
+        <div class="url-item"><span class="lbl">Einstellungen</span><span class="val" id="pathConfig">…</span></div>
+        <button class="btn ghost" id="openFolder" style="width:100%; margin-top:6px">📂 Medien-Ordner auf dem PC öffnen</button>
+      </div>
+
+      <div class="sub">
+        <h3>Betrieb &amp; Notfall</h3>
+        <div class="row-between" style="margin-bottom:12px">
+          <span style="font-size:14px">Autostart mit Windows</span>
+          <label class="toggle"><input type="checkbox" id="autostartToggle" /><span class="track"></span></label>
+        </div>
+        <div class="row-between">
+          <span style="font-size:14px">Wartungsmodus (Player schließen)</span>
+          <label class="toggle"><input type="checkbox" id="maintToggle" /><span class="track"></span></label>
+        </div>
+        <p class="hint">Wartungsmodus schließt die Vollbild-Player, damit du am PC etwas einstellen kannst. Die App bleibt im Hintergrund (Tray-Symbol) und der Player kommt nicht von selbst zurück, bis du den Modus wieder ausschaltest. Nach einem Neustart läuft das Board automatisch wieder normal.</p>
+      </div>
+
+      <div class="sub">
         <h3>Nachtbetrieb (Schlafen &amp; Aufwachen)</h3>
         <div class="row-between" style="margin-bottom:12px">
           <span style="font-size:14px">Automatik aktiv</span>
@@ -456,6 +476,12 @@
         $("autoEnabled").checked = !!a.enabled;
         if (a.dayStart) $("dayStart").value = a.dayStart;
         if (a.nightStart) $("nightStart").value = a.nightStart;
+        $("autostartToggle").checked = state.autostart !== false;
+        $("maintToggle").checked = !!state.maintenance;
+        if (state.paths) {
+          $("pathMedia").textContent = state.paths.media || "—";
+          $("pathConfig").textContent = state.paths.config || "—";
+        }
       }
 
       function renderAll() { renderLive(); renderScenes(); renderMedia(); renderSettings(); }
@@ -562,6 +588,10 @@
 
       $("restartBtn").addEventListener("click", async () => { await api("/api/power", { action: "restart-players" }); toast("Player werden neu gestartet"); });
       $("sleepBtn").addEventListener("click", async () => { if (confirm("PC jetzt in den Schlaf schicken?")) await api("/api/power", { action: "sleep" }); });
+
+      $("autostartToggle").addEventListener("change", async (e) => { await api("/api/autostart", { enabled: e.target.checked }); toast(e.target.checked ? "Autostart aktiv" : "Autostart aus"); });
+      $("maintToggle").addEventListener("change", async (e) => { await api("/api/maintenance", { enabled: e.target.checked }); toast(e.target.checked ? "Wartungsmodus an – Player geschlossen" : "Wartungsmodus aus – Board läuft"); });
+      $("openFolder").addEventListener("click", async () => { await api("/api/open-folder", {}); toast("Ordner auf dem PC geöffnet"); });
 
       // ---- upload ----
       const dz = $("dropzone");

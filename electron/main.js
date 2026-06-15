@@ -16,6 +16,7 @@ const os = require("os");
 const { Store } = require("../server/store");
 const { startServer } = require("../server");
 const { applySchedule, runPowerAction } = require("./power");
+const { ensureFirewallRule } = require("./firewall");
 
 const PORT = 8787;
 const SLOTS = ["left", "middle", "right"];
@@ -235,6 +236,10 @@ app.whenReady().then(async () => {
   try {
     app.setLoginItemSettings({ openAtLogin: store.getState().autostart !== false });
   } catch (_) {}
+
+  // Open the firewall for the dashboard port so the phone can reach the PC
+  // over Tailscale / LAN (best-effort; the installer also adds this rule).
+  ensureFirewallRule(PORT).catch(() => {});
 
   serverInfo = await startServer({
     store,

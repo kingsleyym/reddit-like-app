@@ -108,6 +108,19 @@ einen Knopf „Medien-Ordner öffnen".
   oder das Tray-Symbol (Rechtsklick). Nach einem Neustart läuft das Board
   automatisch wieder normal.
 
+## Dashboard lädt vom Handy nicht (aber lokal am PC schon)?
+
+Das ist fast immer die **Windows-Firewall**, die eingehende Verbindungen auf
+Port 8787 blockiert. Der Installer öffnet den Port automatisch. Falls es doch
+klemmt, einmalig in einer **PowerShell als Administrator**:
+
+```
+netsh advfirewall firewall add rule name="MenuBoard" dir=in action=allow protocol=TCP localport=8787
+```
+
+(Tailscale ist dann nicht das Problem – der Tunnel steht, nur Windows ließ die
+Verbindung nicht durch.)
+
 ## Wie funktioniert der Fernzugriff (Tailscale)?
 
 Tailscale ist nur die **sichere Leitung** zum PC – ein verschlüsselter privater

@@ -77,6 +77,8 @@
       .toast.err { background: var(--accent); color: #2a0a04; }
       .switch { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
       .muted { color: var(--muted); font-size: 13px; }
+      .status-line { font-size: 14px; line-height: 1.5; }
+      .status-line .play { color: var(--muted); display: block; font-size: 12px; }
       progress { width: 100%; height: 8px; }
     </style>
   </head>
@@ -101,6 +103,27 @@
         </div>
       </div>
       <div class="muted" style="margin-top:10px">Aenderung wird sofort auf dem Bildschirm uebernommen.</div>
+    </div>
+
+    <div class="card">
+      <h2>Status (laeuft alles?)</h2>
+      <div class="screens" id="statusGrid">
+        <div><div class="screen-label">⬅️ Links</div><div class="status-line" id="st-left">…</div></div>
+        <div><div class="screen-label">⏺️ Mitte</div><div class="status-line" id="st-middle">…</div></div>
+        <div><div class="screen-label">➡️ Rechts</div><div class="status-line" id="st-right">…</div></div>
+      </div>
+      <div class="muted" style="margin-top:10px">🟢 = Bildschirm laeuft &amp; ist verbunden, 🔴 = kein Bild/offline.</div>
+    </div>
+
+    <div class="card">
+      <h2>Monitor-Zuordnung (verteilen)</h2>
+      <div class="muted" style="margin-bottom:10px">Falls links/Mitte/rechts vertauscht sind: hier dem richtigen Monitor zuordnen.</div>
+      <div class="screens">
+        <div><div class="screen-label">⬅️ Links</div><select id="map-left"></select></div>
+        <div><div class="screen-label">⏺️ Mitte</div><select id="map-middle"></select></div>
+        <div><div class="screen-label">➡️ Rechts</div><select id="map-right"></select></div>
+      </div>
+      <button id="saveMapping">Zuordnung speichern &amp; anwenden</button>
     </div>
 
     <div class="card">
@@ -142,7 +165,9 @@
     <script>
       const $ = (id) => document.getElementById(id);
       const slots = ["left", "middle", "right"];
+      const slotName = { left: "Links", middle: "Mitte", right: "Rechts" };
       let state = null;
+      let playerStatus = { left: false, middle: false, right: false };
 
       function toast(msg, isErr) {
         const t = $("toast");
@@ -188,12 +213,63 @@
         $("schedEnabled").checked = !!s.enabled;
         if (s.sleepTime) $("sleepTime").value = s.sleepTime;
         if (s.wakeTime) $("wakeTime").value = s.wakeTime;
+        renderStatus();
+      }
+
+      function renderStatus() {
+        if (!state) return;
+        for (const slot of slots) {
+          const online = playerStatus[slot];
+          const videoId = state.screens[slot].videoId;
+          const vid = (state.videos || []).find((v) => v.id === videoId);
+          const playing = vid ? vid.name : "— kein Video —";
+          $("st-" + slot).innerHTML =
+            (online ? "🟢 verbunden" : "🔴 offline") +
+            '<span class="play">spielt: ' + playing + "</span>";
+        }
+      }
+
+      async function loadDisplays() {
+        try {
+          const { displays } = await fetch("/api/displays").then((r) => r.json());
+          const mapping = (state && state.displayMapping) || {};
+          for (const slot of slots) {
+            const sel = $("map-" + slot);
+            sel.innerHTML = "";
+            const auto = document.createElement("option");
+            auto.value = "";
+            auto.textContent = "Automatisch";
+            sel.appendChild(auto);
+            for (const d of displays) {
+              const o = document.createElement("option");
+              o.value = String(d.id);
+              o.textContent = d.label + (d.primary ? " (Haupt)" : "");
+              if (mapping[slot] != null && String(mapping[slot]) === String(d.id)) o.selected = true;
+              sel.appendChild(o);
+            }
+          }
+        } catch (_) {}
       }
 
       async function loadState() {
         state = await fetch("/api/state").then((r) => r.json());
         render();
+        loadDisplays();
       }
+
+      $("saveMapping").addEventListener("click", async () => {
+        const mapping = {};
+        for (const slot of slots) {
+          const v = $("map-" + slot).value;
+          mapping[slot] = v === "" ? null : Number(v);
+        }
+        await fetch("/api/displays", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(mapping),
+        });
+        toast("Zuordnung gespeichert – Bildschirme starten neu");
+      });
 
       for (const slot of slots) {
         $("sel-" + slot).addEventListener("change", async (e) => {
@@ -297,6 +373,9 @@
             if (msg.type === "state") {
               state = msg.state;
               render();
+            } else if (msg.type === "status") {
+              playerStatus = msg.players;
+              renderStatus();
             }
           } catch (_) {}
         };

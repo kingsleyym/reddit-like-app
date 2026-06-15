@@ -112,6 +112,10 @@
       let ws;
       function connect() {
         ws = new WebSocket("ws://" + location.host);
+        ws.onopen = () => {
+          // Identify this player so the dashboard can show live status.
+          ws.send(JSON.stringify({ type: "hello", role: "player", slot }));
+        };
         ws.onmessage = (ev) => {
           let msg;
           try {

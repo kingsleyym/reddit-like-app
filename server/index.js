@@ -173,9 +173,40 @@ function startServer(opts) {
   const wss = new WebSocketServer({ server });
 
   wss.on("connection", (ws) => {
-    // Send current state immediately so a player can render right away.
+    ws.on("message", (raw) => {
+      let msg;
+      try {
+        msg = JSON.parse(raw.toString());
+      } catch (_) {
+        return;
+      }
+      // A player identifies itself so the dashboard can show live status.
+      if (msg && msg.type === "hello") {
+        ws.role = msg.role;
+        ws.slot = msg.slot;
+        broadcastStatus();
+      }
+    });
+    ws.on("close", () => broadcastStatus());
+
+    // Send current state + status immediately so clients render right away.
     ws.send(JSON.stringify({ type: "state", state: publicState() }));
+    ws.send(JSON.stringify({ type: "status", players: connectedStatus() }));
   });
+
+  function connectedStatus() {
+    const players = { left: false, middle: false, right: false };
+    for (const client of wss.clients) {
+      if (client.readyState === 1 && client.role === "player" && client.slot in players) {
+        players[client.slot] = true;
+      }
+    }
+    return players;
+  }
+
+  function broadcastStatus() {
+    broadcast({ type: "status", players: connectedStatus() });
+  }
 
   function broadcast(msg) {
     const data = JSON.stringify(msg);

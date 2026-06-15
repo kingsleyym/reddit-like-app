@@ -3,38 +3,57 @@
 const fs = require("fs");
 const path = require("path");
 
-// Two scenes: "day" (Tag/Mittag) and "night" (Abend). Each maps the three
-// logical screen slots to a stored video id (or null). One scene is "live"
-// at a time. The dashboard can switch the live scene with one tap, or it
-// switches automatically by time of day.
+// Two scenes: "day" (Tag/Mittag) and "night" (Abend). Each scene maps the
+// three screen slots (left/middle/right) to a PLAYLIST: an ordered list of
+// entries { videoId, repeat }. "repeat" is how many times that video loops
+// before the playlist advances to the next entry. The whole playlist then
+// loops. A playlist with a single entry simply loops that one video forever
+// (the classic menu-video case). This lets you do e.g.
+//   [ menu x5, adA x1, menu x5, adB x1 ].
 function emptySlots() {
-  return { left: null, middle: null, right: null };
+  return { left: [], middle: [], right: [] };
 }
+
+const SLOTS = ["left", "middle", "right"];
+const SCENES = ["day", "night"];
 
 const DEFAULT_STATE = {
   videos: [], // { id, file, name, size, uploadedAt }
-  scenes: {
-    day: emptySlots(),
-    night: emptySlots(),
-  },
-  liveScene: "day", // "day" | "night"
-  autoSwitch: {
-    enabled: false,
-    dayStart: "11:00", // switch to day scene at this time
-    nightStart: "17:00", // switch to night scene at this time
-  },
-  schedule: {
-    enabled: false,
-    sleepTime: "23:30",
-    wakeTime: "08:30",
-  },
+  scenes: { day: emptySlots(), night: emptySlots() },
+  liveScene: "day",
+  autoSwitch: { enabled: false, dayStart: "11:00", nightStart: "17:00" },
+  schedule: { enabled: false, sleepTime: "23:30", wakeTime: "08:30" },
   displayMapping: { left: null, middle: null, right: null },
-  // Start automatically with Windows. Maintenance mode is runtime-only:
-  // it is reset to false on every app start so a reboot always brings the
-  // board back.
   autostart: true,
   maintenance: false,
 };
+
+// Accept any historical slot shape and return a clean playlist array.
+//   null / undefined         -> []
+//   "videoId" (old single)   -> [{ videoId, repeat: 1 }]
+//   [{ videoId, repeat }]     -> validated playlist
+function normalizePlaylist(val) {
+  if (Array.isArray(val)) {
+    return val
+      .filter((e) => e && typeof e.videoId === "string")
+      .map((e) => ({ videoId: e.videoId, repeat: clampRepeat(e.repeat) }))
+      .slice(0, 50);
+  }
+  if (typeof val === "string" && val) return [{ videoId: val, repeat: 1 }];
+  return [];
+}
+
+function clampRepeat(n) {
+  n = parseInt(n, 10);
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.min(999, n);
+}
+
+function normalizeScene(sceneObj) {
+  const out = emptySlots();
+  for (const slot of SLOTS) out[slot] = normalizePlaylist(sceneObj ? sceneObj[slot] : null);
+  return out;
+}
 
 class Store {
   constructor(dataFile) {
@@ -49,13 +68,17 @@ class Store {
       const parsed = JSON.parse(fs.readFileSync(this.dataFile, "utf8"));
       const d = JSON.parse(JSON.stringify(DEFAULT_STATE));
 
+      // Source scenes from the new model, or migrate from the very old flat
+      // "screens" model if that is all we have.
+      const srcScenes = parsed.scenes || (parsed.screens ? { day: parsed.screens, night: parsed.screens } : {});
+
       this.state = {
         ...d,
         ...parsed,
         videos: Array.isArray(parsed.videos) ? parsed.videos : [],
         scenes: {
-          day: { ...emptySlots(), ...((parsed.scenes && parsed.scenes.day) || {}) },
-          night: { ...emptySlots(), ...((parsed.scenes && parsed.scenes.night) || {}) },
+          day: normalizeScene(srcScenes.day),
+          night: normalizeScene(srcScenes.night),
         },
         liveScene: parsed.liveScene === "night" ? "night" : "day",
         autoSwitch: { ...d.autoSwitch, ...(parsed.autoSwitch || {}) },
@@ -64,13 +87,7 @@ class Store {
         autostart: parsed.autostart !== undefined ? !!parsed.autostart : true,
         maintenance: false,
       };
-
-      // Migration from the old flat "screens" model: seed both scenes with it.
-      if (parsed.screens && (!parsed.scenes)) {
-        this.state.scenes.day = { ...emptySlots(), ...parsed.screens };
-        this.state.scenes.night = { ...emptySlots(), ...parsed.screens };
-        this.save();
-      }
+      delete this.state.screens;
     } catch (err) {
       console.error("[store] could not read data file, using defaults:", err.message);
     }
@@ -106,23 +123,22 @@ class Store {
   removeVideo(id) {
     const video = this.state.videos.find((v) => v.id === id);
     this.state.videos = this.state.videos.filter((v) => v.id !== id);
-    // Unassign it from any scene/slot that referenced it.
-    for (const scene of ["day", "night"]) {
-      for (const slot of ["left", "middle", "right"]) {
-        if (this.state.scenes[scene][slot] === id) {
-          this.state.scenes[scene][slot] = null;
-        }
+    // Drop the video from every scene/slot playlist that referenced it.
+    for (const scene of SCENES) {
+      for (const slot of SLOTS) {
+        this.state.scenes[scene][slot] = this.state.scenes[scene][slot].filter((e) => e.videoId !== id);
       }
     }
     this.save();
     return video;
   }
 
-  setSceneSlot(scene, slot, videoId) {
+  setScenePlaylist(scene, slot, playlist) {
     if (!this.state.scenes[scene]) throw new Error("unknown scene: " + scene);
-    if (!(slot in this.state.scenes[scene])) throw new Error("unknown slot: " + slot);
-    this.state.scenes[scene][slot] = videoId || null;
+    if (SLOTS.indexOf(slot) === -1) throw new Error("unknown slot: " + slot);
+    this.state.scenes[scene][slot] = normalizePlaylist(playlist);
     this.save();
+    return this.state.scenes[scene][slot];
   }
 
   setLiveScene(scene) {
@@ -161,4 +177,4 @@ class Store {
   }
 }
 
-module.exports = { Store, DEFAULT_STATE };
+module.exports = { Store, DEFAULT_STATE, SLOTS, SCENES };

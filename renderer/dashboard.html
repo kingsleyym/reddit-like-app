@@ -6,19 +6,11 @@
     <title>MenuBoard – Steuerung</title>
     <style>
       :root {
-        --bg: #0a0c11;
-        --bg2: #0f1219;
-        --card: rgba(255, 255, 255, 0.04);
-        --card-border: rgba(255, 255, 255, 0.08);
-        --text: #f2f4f8;
-        --muted: #8b94a7;
-        --accent: #ff6b35;
-        --day: #ffb020;
-        --night: #7c6cff;
-        --ok: #25d07d;
-        --bad: #ff5470;
+        --bg: #0a0c11; --bg2: #0f1219;
+        --card: rgba(255,255,255,0.04); --card-border: rgba(255,255,255,0.08);
+        --text: #f2f4f8; --muted: #8b94a7; --accent: #ff6b35;
+        --day: #ffb020; --night: #7c6cff; --ok: #25d07d; --bad: #ff5470;
         --radius: 18px;
-        --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
       }
       * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
       html, body { margin: 0; }
@@ -26,98 +18,66 @@
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
         color: var(--text);
         background:
-          radial-gradient(1200px 600px at 80% -10%, rgba(255, 107, 53, 0.12), transparent 60%),
-          radial-gradient(1000px 500px at -10% 10%, rgba(124, 108, 255, 0.12), transparent 55%),
+          radial-gradient(1200px 600px at 80% -10%, rgba(255,107,53,0.12), transparent 60%),
+          radial-gradient(1000px 500px at -10% 10%, rgba(124,108,255,0.12), transparent 55%),
           var(--bg);
         min-height: 100vh;
-        padding: 18px 16px 60px;
-        max-width: 720px;
-        margin: 0 auto;
+        padding: 16px 16px calc(86px + env(safe-area-inset-bottom));
+        max-width: 720px; margin: 0 auto;
       }
-      header {
-        display: flex; align-items: center; justify-content: space-between;
-        margin-bottom: 18px;
-      }
+      header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
       .brand { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
       .brand span { opacity: 0.6; font-weight: 600; }
-      .live-badge {
-        font-size: 12px; font-weight: 700; padding: 7px 12px; border-radius: 999px;
-        background: rgba(255, 176, 32, 0.15); color: var(--day);
-        border: 1px solid rgba(255, 176, 32, 0.3);
-      }
-      .live-badge.night { background: rgba(124, 108, 255, 0.15); color: var(--night); border-color: rgba(124, 108, 255, 0.3); }
+      .live-badge { font-size: 12px; font-weight: 700; padding: 7px 12px; border-radius: 999px;
+        background: rgba(255,176,32,0.15); color: var(--day); border: 1px solid rgba(255,176,32,0.3); }
+      .live-badge.night { background: rgba(124,108,255,0.15); color: var(--night); border-color: rgba(124,108,255,0.3); }
 
-      .card {
-        background: var(--card);
-        border: 1px solid var(--card-border);
-        border-radius: var(--radius);
-        padding: 18px;
-        margin-bottom: 16px;
-        backdrop-filter: blur(12px);
-        box-shadow: var(--shadow);
-      }
-      .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-      h2 { font-size: 15px; margin: 0 0 14px; font-weight: 700; letter-spacing: 0.2px; }
+      .card { background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius);
+        padding: 18px; margin-bottom: 16px; backdrop-filter: blur(12px); }
+      .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 10px; }
+      h2 { font-size: 15px; margin: 0 0 14px; font-weight: 700; }
       .card-head h2 { margin: 0; }
       .hint { color: var(--muted); font-size: 12.5px; margin: 12px 0 0; line-height: 1.5; }
 
-      /* Segmented Tag/Abend live switch */
-      .seg {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
-        background: rgba(0, 0, 0, 0.3); padding: 6px; border-radius: 14px; margin-bottom: 16px;
-      }
-      .seg-btn {
-        border: none; border-radius: 10px; padding: 16px 8px; font-size: 16px; font-weight: 700;
-        color: var(--muted); background: transparent; cursor: pointer; transition: 0.2s;
-      }
-      .seg-btn.active[data-scene="day"] { background: linear-gradient(135deg, #ffb020, #ff8a00); color: #1a1200; box-shadow: 0 6px 18px rgba(255, 176, 32, 0.35); }
-      .seg-btn.active[data-scene="night"] { background: linear-gradient(135deg, #7c6cff, #5b46ff); color: #fff; box-shadow: 0 6px 18px rgba(124, 108, 255, 0.4); }
+      .tab-page { display: none; }
+      .tab-page.active { display: block; animation: fade 0.2s ease; }
+      @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
-      .screens-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-      @media (max-width: 560px) { .screens-row { grid-template-columns: 1fr; } }
-      .live-screen {
-        background: rgba(0, 0, 0, 0.25); border: 1px solid var(--card-border);
-        border-radius: 12px; padding: 12px; min-height: 78px;
-      }
-      .live-screen .pos { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
-      .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); display: inline-block; }
-      .dot.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
-      .live-screen .name { font-size: 13.5px; margin-top: 8px; font-weight: 600; line-height: 1.3; word-break: break-word; }
-      .live-screen .name.empty { color: var(--muted); font-weight: 400; }
-
-      /* Tabs */
-      .tabs { display: flex; gap: 4px; background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 10px; }
+      /* segmented control / scene tabs */
+      .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 14px; }
+      .seg-btn { border: none; border-radius: 10px; padding: 18px 8px; font-size: 17px; font-weight: 700; color: var(--muted); background: transparent; cursor: pointer; transition: 0.2s; }
+      .seg-btn.active[data-scene="day"] { background: linear-gradient(135deg,#ffb020,#ff8a00); color: #1a1200; }
+      .seg-btn.active[data-scene="night"] { background: linear-gradient(135deg,#7c6cff,#5b46ff); color: #fff; }
+      .tabs { display: flex; gap: 4px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 10px; }
       .tab { border: none; background: transparent; color: var(--muted); padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; }
-      .tab.active { background: rgba(255, 255, 255, 0.1); color: var(--text); }
+      .tab.active { background: rgba(255,255,255,0.1); color: var(--text); }
 
-      .slot-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-      @media (max-width: 560px) { .slot-grid { grid-template-columns: 1fr; } }
-      .slot {
-        background: rgba(0, 0, 0, 0.25); border: 1px solid var(--card-border);
-        border-radius: 12px; overflow: hidden;
-      }
-      .slot .thumb {
-        aspect-ratio: 16/9; background: #11141c center/cover no-repeat;
-        display: flex; align-items: center; justify-content: center; color: #3a4150; font-size: 12px;
-        position: relative;
-      }
-      .slot .pos { padding: 8px 10px 0; font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
-      .slot .name { padding: 4px 10px 8px; font-size: 12.5px; font-weight: 600; min-height: 30px; word-break: break-word; }
-      .slot .name.empty { color: var(--muted); font-weight: 400; }
-      .slot .acts { display: flex; gap: 6px; padding: 0 10px 10px; }
+      .live-list { display: flex; flex-direction: column; gap: 10px; }
+      .live-screen { background: rgba(0,0,0,0.25); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px; display: flex; align-items: center; gap: 12px; }
+      .live-screen .pos { font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex: 0 0 86px; display: flex; align-items: center; gap: 7px; }
+      .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--bad); flex: 0 0 auto; }
+      .dot.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+      .live-screen .info { flex: 1; min-width: 0; }
+      .live-screen .now { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .live-screen .sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
 
-      button.btn {
-        border: none; border-radius: 9px; padding: 9px 12px; font-size: 13px; font-weight: 600;
-        cursor: pointer; background: rgba(255, 255, 255, 0.08); color: var(--text); flex: 1;
-      }
+      .slot-card { background: rgba(0,0,0,0.25); border: 1px solid var(--card-border); border-radius: 14px; padding: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
+      .slot-card .thumb { width: 86px; height: 50px; border-radius: 8px; background: #11141c center/cover no-repeat; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; color: #3a4150; font-size: 18px; }
+      .slot-card .body { flex: 1; min-width: 0; }
+      .slot-card .pos { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
+      .slot-card .summary { font-size: 13.5px; font-weight: 600; margin-top: 3px; line-height: 1.35; word-break: break-word; }
+      .slot-card .summary.empty { color: var(--muted); font-weight: 400; }
+
+      button.btn { border: none; border-radius: 10px; padding: 11px 14px; font-size: 14px; font-weight: 600; cursor: pointer; background: rgba(255,255,255,0.08); color: var(--text); }
       button.btn.primary { background: var(--accent); color: #fff; }
       button.btn.ghost { background: transparent; border: 1px solid var(--card-border); }
-      button.btn.danger { background: rgba(255, 84, 112, 0.15); color: var(--bad); }
+      button.btn.danger { background: rgba(255,84,112,0.15); color: var(--bad); }
+      button.btn.block { width: 100%; }
+      button.btn.sm { padding: 8px 11px; font-size: 13px; }
       button.btn:active { transform: scale(0.97); }
 
-      /* Auto switch */
-      .row-between { display: flex; align-items: center; justify-content: space-between; }
-      .toggle { position: relative; width: 50px; height: 28px; display: inline-block; }
+      .row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .toggle { position: relative; width: 50px; height: 28px; display: inline-block; flex: 0 0 auto; }
       .toggle input { display: none; }
       .toggle .track { position: absolute; inset: 0; background: rgba(255,255,255,0.12); border-radius: 999px; transition: 0.2s; }
       .toggle .track::after { content: ""; position: absolute; width: 22px; height: 22px; border-radius: 50%; background: #fff; top: 3px; left: 3px; transition: 0.2s; }
@@ -126,63 +86,67 @@
       .time-row { display: flex; gap: 12px; margin-top: 14px; }
       .field { flex: 1; }
       .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-      input[type="time"], input[type="text"] {
+      input[type="time"], input[type="text"], select {
         width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--card-border);
         background: rgba(0,0,0,0.3); color: var(--text); font-size: 15px; font-family: inherit;
       }
 
-      /* Media grid */
-      .dropzone {
-        border: 1.5px dashed var(--card-border); border-radius: 12px; padding: 22px; text-align: center;
-        color: var(--muted); font-size: 13px; cursor: pointer; transition: 0.2s; margin-bottom: 14px;
-      }
+      .dropzone { border: 1.5px dashed var(--card-border); border-radius: 12px; padding: 22px; text-align: center; color: var(--muted); font-size: 13px; cursor: pointer; transition: 0.2s; margin-bottom: 14px; }
       .dropzone.drag { border-color: var(--accent); background: rgba(255,107,53,0.08); color: var(--text); }
       .media-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
       @media (max-width: 420px) { .media-grid { grid-template-columns: 1fr; } }
-      .media {
-        background: rgba(0,0,0,0.25); border: 1px solid var(--card-border); border-radius: 12px; overflow: hidden;
-      }
-      .media .thumb { aspect-ratio: 16/9; background: #11141c center/cover no-repeat; display: flex; align-items: center; justify-content: center; color: #3a4150; font-size: 11px; }
-      .media .meta { padding: 8px 10px 10px; }
-      .media .meta input { font-size: 13px; padding: 7px 9px; margin-bottom: 6px; }
+      .media { background: rgba(0,0,0,0.25); border: 1px solid var(--card-border); border-radius: 12px; overflow: hidden; }
+      .media .thumb { aspect-ratio: 16/9; background: #11141c center/cover no-repeat; display: flex; align-items: center; justify-content: center; color: #3a4150; font-size: 22px; }
+      .media .meta { padding: 9px 10px 10px; }
+      .media .meta input { font-size: 13px; padding: 8px 9px; margin-bottom: 7px; }
       .media .size { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
-      .media .acts { display: flex; gap: 6px; }
       progress { width: 100%; height: 8px; border-radius: 8px; overflow: hidden; margin-bottom: 12px; }
 
-      details.card > summary { cursor: pointer; font-weight: 700; font-size: 15px; list-style: none; }
-      details.card > summary::-webkit-details-marker { display: none; }
-      details.card > summary::after { content: " ⌄"; color: var(--muted); }
-      details[open].card > summary::after { content: " ⌃"; }
-      .sub { margin-top: 16px; }
-      .sub h3 { font-size: 13px; margin: 0 0 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+      .sub { margin-top: 18px; }
+      .sub:first-child { margin-top: 0; }
+      .sub h3 { font-size: 12px; margin: 0 0 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
       .url-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; background: rgba(0,0,0,0.25); border-radius: 10px; margin-bottom: 8px; }
       .url-item .lbl { font-size: 11px; color: var(--muted); }
       .url-item .val { font-size: 14px; font-weight: 600; font-family: ui-monospace, monospace; word-break: break-all; }
+      .path { font-family: ui-monospace, monospace; font-size: 12px; background: rgba(0,0,0,0.3); padding: 8px 10px; border-radius: 8px; word-break: break-all; color: var(--muted); }
       .map-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
       .map-row span { width: 70px; font-size: 13px; color: var(--muted); }
-      select { flex: 1; padding: 10px; border-radius: 10px; background: rgba(0,0,0,0.3); color: var(--text); border: 1px solid var(--card-border); font-size: 14px; }
 
-      /* Modal */
-      .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: none; align-items: flex-end; z-index: 50; }
+      /* bottom nav */
+      .bottom-nav {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+        display: flex; justify-content: space-around;
+        background: rgba(12,14,20,0.92); backdrop-filter: blur(14px);
+        border-top: 1px solid var(--card-border); padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+      }
+      .bottom-nav button { background: none; border: none; color: var(--muted); font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px 16px; }
+      .bottom-nav button .ic { font-size: 20px; }
+      .bottom-nav button.active { color: var(--accent); }
+
+      /* modal */
+      .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: none; align-items: flex-end; z-index: 60; }
       .modal.open { display: flex; }
-      .modal-card { background: var(--bg2); border-top-left-radius: 22px; border-top-right-radius: 22px; padding: 18px; width: 100%; max-height: 82vh; overflow-y: auto; box-shadow: 0 -10px 40px rgba(0,0,0,0.6); }
+      .modal-card { background: var(--bg2); border-top-left-radius: 22px; border-top-right-radius: 22px; padding: 18px; width: 100%; max-height: 86vh; overflow-y: auto; }
       @media (min-width: 560px) { .modal { align-items: center; justify-content: center; } .modal-card { max-width: 560px; border-radius: 22px; } }
       .modal-card h3 { margin: 4px 0 16px; font-size: 16px; }
-      .pick {
-        cursor: pointer; border: 2px solid transparent; border-radius: 12px; overflow: hidden;
-        background: rgba(0,0,0,0.25);
-      }
-      .pick.sel { border-color: var(--accent); }
-      .pick .thumb { aspect-ratio: 16/9; background: #11141c center/cover no-repeat; display: flex; align-items: center; justify-content: center; color: #3a4150; font-size: 11px; }
-      .pick .nm { padding: 7px 9px; font-size: 12px; font-weight: 600; word-break: break-word; }
 
-      .toast {
-        position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px);
-        background: var(--ok); color: #04150c; font-weight: 700; padding: 12px 18px; border-radius: 12px;
-        opacity: 0; transition: 0.25s; pointer-events: none; z-index: 99; font-size: 14px;
-      }
-      .toast.show { opacity: 1; transform: translate(-50%, 0); }
+      .pl-entry { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.25); border: 1px solid var(--card-border); border-radius: 12px; padding: 10px; margin-bottom: 10px; }
+      .pl-entry .thumb { width: 64px; height: 38px; border-radius: 6px; background: #11141c center/cover no-repeat; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; color: #3a4150; }
+      .pl-entry .nm { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .stepper { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+      .stepper button { width: 30px; height: 30px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: var(--text); font-size: 16px; font-weight: 700; cursor: pointer; }
+      .stepper .val { min-width: 54px; text-align: center; font-size: 12px; }
+      .stepper .val b { font-size: 15px; }
+      .pl-move { display: flex; flex-direction: column; gap: 2px; flex: 0 0 auto; }
+      .pl-move button { width: 26px; height: 22px; border: none; background: rgba(255,255,255,0.08); color: var(--muted); border-radius: 6px; cursor: pointer; font-size: 11px; }
+      .pick { cursor: pointer; border: 2px solid transparent; border-radius: 12px; overflow: hidden; background: rgba(0,0,0,0.25); }
+      .pick .thumb { aspect-ratio: 16/9; background: #11141c center/cover no-repeat; display: flex; align-items: center; justify-content: center; color: #3a4150; font-size: 20px; }
+      .pick .nm2 { padding: 7px 9px; font-size: 12px; font-weight: 600; word-break: break-word; }
+
+      .toast { position: fixed; left: 50%; bottom: 96px; transform: translate(-50%,20px); background: var(--ok); color: #04150c; font-weight: 700; padding: 12px 18px; border-radius: 12px; opacity: 0; transition: 0.25s; pointer-events: none; z-index: 99; font-size: 14px; }
+      .toast.show { opacity: 1; transform: translate(-50%,0); }
       .toast.err { background: var(--bad); color: #2a0410; }
+      .empty-note { color: var(--muted); font-size: 13px; padding: 8px 0; }
     </style>
   </head>
   <body>
@@ -191,118 +155,133 @@
       <div class="live-badge" id="liveBadge">LIVE</div>
     </header>
 
-    <!-- LIVE -->
-    <section class="card">
-      <h2>Was läuft gerade live?</h2>
-      <div class="seg" id="liveSwitch">
-        <button class="seg-btn" data-scene="day">☀️ Tag</button>
-        <button class="seg-btn" data-scene="night">🌙 Abend</button>
-      </div>
-      <div class="screens-row" id="liveScreens"></div>
-    </section>
-
-    <!-- SCENE EDITOR -->
-    <section class="card">
-      <div class="card-head">
-        <h2>Szene bearbeiten</h2>
-        <div class="tabs" id="sceneTabs">
-          <button class="tab" data-scene="day">☀️ Tag</button>
-          <button class="tab" data-scene="night">🌙 Abend</button>
+    <!-- ============ LIVE ============ -->
+    <div class="tab-page active" id="page-live">
+      <div class="card">
+        <h2>Was läuft gerade live?</h2>
+        <div class="seg" id="liveSwitch">
+          <button class="seg-btn" data-scene="day">☀️ Tag</button>
+          <button class="seg-btn" data-scene="night">🌙 Abend</button>
         </div>
       </div>
-      <div class="slot-grid" id="slotGrid"></div>
-      <p class="hint" id="editHint"></p>
-    </section>
-
-    <!-- AUTO SWITCH -->
-    <section class="card">
-      <div class="row-between">
-        <h2 style="margin:0">Automatik Tag → Abend</h2>
-        <label class="toggle"><input type="checkbox" id="autoEnabled" /><span class="track"></span></label>
+      <div class="card">
+        <h2>Status der Bildschirme</h2>
+        <div class="live-list" id="liveScreens"></div>
       </div>
-      <div class="time-row">
-        <div class="field"><label>Tag ab</label><input type="time" id="dayStart" value="11:00" /></div>
-        <div class="field"><label>Abend ab</label><input type="time" id="nightStart" value="17:00" /></div>
-      </div>
-      <button class="btn primary" id="saveAuto" style="margin-top:14px; width:100%">Automatik speichern</button>
-      <p class="hint">Wenn aktiv, schaltet das Board selbst zwischen Tag- und Abend-Szene um.</p>
-    </section>
+    </div>
 
-    <!-- MEDIA -->
-    <section class="card">
-      <div class="card-head">
+    <!-- ============ SCENES ============ -->
+    <div class="tab-page" id="page-scenes">
+      <div class="card">
+        <div class="card-head">
+          <h2>Playlists pro Bildschirm</h2>
+          <div class="tabs" id="sceneTabs">
+            <button class="tab" data-scene="day">☀️ Tag</button>
+            <button class="tab" data-scene="night">🌙 Abend</button>
+          </div>
+        </div>
+        <div id="slotCards"></div>
+        <p class="hint" id="editHint"></p>
+      </div>
+    </div>
+
+    <!-- ============ MEDIA ============ -->
+    <div class="tab-page" id="page-media">
+      <div class="card">
         <h2>Mediathek</h2>
+        <div class="dropzone" id="dropzone">📁 Video / Werbung hierher ziehen oder tippen</div>
+        <input type="file" id="fileInput" accept="video/*" hidden />
+        <progress id="prog" value="0" max="100" hidden></progress>
+        <div class="media-grid" id="mediaGrid"></div>
       </div>
-      <div class="dropzone" id="dropzone">📁 Video hierher ziehen oder tippen zum Auswählen</div>
-      <input type="file" id="fileInput" accept="video/*" hidden />
-      <progress id="prog" value="0" max="100" hidden></progress>
-      <div class="media-grid" id="mediaGrid"></div>
-    </section>
+    </div>
 
-    <!-- SETTINGS -->
-    <details class="card">
-      <summary>⚙️ Einstellungen &amp; Wartung</summary>
-
-      <div class="sub">
-        <h3>Zugriff (so öffnest du das Dashboard)</h3>
-        <div id="accessList"></div>
-      </div>
-
-      <div class="sub">
-        <h3>Speicherort auf dem PC</h3>
-        <div class="url-item"><span class="lbl">Videos</span><span class="val" id="pathMedia">…</span></div>
-        <div class="url-item"><span class="lbl">Einstellungen</span><span class="val" id="pathConfig">…</span></div>
-        <button class="btn ghost" id="openFolder" style="width:100%; margin-top:6px">📂 Medien-Ordner auf dem PC öffnen</button>
-      </div>
-
-      <div class="sub">
-        <h3>Betrieb &amp; Notfall</h3>
-        <div class="row-between" style="margin-bottom:12px">
-          <span style="font-size:14px">Autostart mit Windows</span>
-          <label class="toggle"><input type="checkbox" id="autostartToggle" /><span class="track"></span></label>
-        </div>
+    <!-- ============ MORE ============ -->
+    <div class="tab-page" id="page-more">
+      <div class="card">
         <div class="row-between">
-          <span style="font-size:14px">Wartungsmodus (Player schließen)</span>
-          <label class="toggle"><input type="checkbox" id="maintToggle" /><span class="track"></span></label>
+          <h2 style="margin:0">Automatik Tag → Abend</h2>
+          <label class="toggle"><input type="checkbox" id="autoEnabled" /><span class="track"></span></label>
         </div>
-        <p class="hint">Wartungsmodus schließt die Vollbild-Player, damit du am PC etwas einstellen kannst. Die App bleibt im Hintergrund (Tray-Symbol) und der Player kommt nicht von selbst zurück, bis du den Modus wieder ausschaltest. Nach einem Neustart läuft das Board automatisch wieder normal.</p>
+        <div class="time-row">
+          <div class="field"><label>Tag ab</label><input type="time" id="dayStart" value="11:00" /></div>
+          <div class="field"><label>Abend ab</label><input type="time" id="nightStart" value="17:00" /></div>
+        </div>
+        <button class="btn primary block" id="saveAuto" style="margin-top:14px">Automatik speichern</button>
       </div>
 
-      <div class="sub">
-        <h3>Nachtbetrieb (Schlafen &amp; Aufwachen)</h3>
-        <div class="row-between" style="margin-bottom:12px">
-          <span style="font-size:14px">Automatik aktiv</span>
+      <div class="card">
+        <div class="row-between">
+          <h2 style="margin:0">Nachtbetrieb (Schlafen &amp; Aufwachen)</h2>
           <label class="toggle"><input type="checkbox" id="schedEnabled" /><span class="track"></span></label>
         </div>
         <div class="time-row">
           <div class="field"><label>Schlafen um</label><input type="time" id="sleepTime" value="23:30" /></div>
           <div class="field"><label>Aufwachen um</label><input type="time" id="wakeTime" value="08:30" /></div>
         </div>
-        <button class="btn primary" id="saveSched" style="margin-top:12px; width:100%">Zeitplan speichern</button>
+        <button class="btn primary block" id="saveSched" style="margin-top:12px">Zeitplan speichern</button>
         <p class="hint" id="schedNote"></p>
       </div>
 
-      <div class="sub">
-        <h3>Monitor-Zuordnung</h3>
+      <div class="card">
+        <h2>Zugriff (Dashboard öffnen)</h2>
+        <div id="accessList"></div>
+      </div>
+
+      <div class="card">
+        <h2>Monitor-Zuordnung</h2>
         <div class="map-row"><span>⬅️ Links</span><select id="map-left"></select></div>
         <div class="map-row"><span>⏺️ Mitte</span><select id="map-middle"></select></div>
         <div class="map-row"><span>➡️ Rechts</span><select id="map-right"></select></div>
-        <button class="btn primary" id="saveMapping" style="margin-top:8px; width:100%">Zuordnung anwenden</button>
+        <button class="btn primary block" id="saveMapping" style="margin-top:8px">Zuordnung anwenden</button>
       </div>
 
-      <div class="sub">
-        <h3>Wartung</h3>
-        <button class="btn ghost" id="restartBtn" style="width:100%; margin-bottom:8px">🔄 Player neu starten</button>
-        <button class="btn ghost" id="sleepBtn" style="width:100%">😴 PC jetzt schlafen legen</button>
+      <div class="card">
+        <h2>System &amp; Wartung</h2>
+        <div class="row-between" style="margin-bottom:14px">
+          <span style="font-size:14px">Mit Windows automatisch starten</span>
+          <label class="toggle"><input type="checkbox" id="autostartChk" /><span class="track"></span></label>
+        </div>
+        <div class="row-between" style="margin-bottom:14px">
+          <span style="font-size:14px">Wartungsmodus (Player schließen)</span>
+          <label class="toggle"><input type="checkbox" id="maintChk" /><span class="track"></span></label>
+        </div>
+        <p class="hint" style="margin-top:0; margin-bottom:14px">Im Wartungsmodus werden die Vollbild-Player geschlossen, damit du am PC arbeiten kannst. Die App läuft im Hintergrund weiter.</p>
+        <button class="btn ghost block" id="openFolderBtn" style="margin-bottom:8px">📂 Medien-Ordner auf dem PC öffnen</button>
+        <button class="btn ghost block" id="restartBtn" style="margin-bottom:8px">🔄 Player neu starten</button>
+        <button class="btn ghost block" id="sleepBtn" style="margin-bottom:14px">😴 PC jetzt schlafen legen</button>
+        <div class="sub">
+          <h3>Speicherort der Videos</h3>
+          <div class="path" id="mediaPath">…</div>
+        </div>
       </div>
-    </details>
+    </div>
 
-    <!-- PICKER MODAL -->
+    <!-- bottom nav -->
+    <nav class="bottom-nav" id="nav">
+      <button data-tab="live" class="active"><span class="ic">📺</span>Live</button>
+      <button data-tab="scenes"><span class="ic">🎬</span>Playlists</button>
+      <button data-tab="media"><span class="ic">📁</span>Medien</button>
+      <button data-tab="more"><span class="ic">⚙️</span>Mehr</button>
+    </nav>
+
+    <!-- playlist editor modal -->
+    <div class="modal" id="plModal">
+      <div class="modal-card">
+        <h3 id="plTitle">Playlist</h3>
+        <div id="plList"></div>
+        <button class="btn primary block" id="plAdd" style="margin-top:6px">+ Video / Werbung hinzufügen</button>
+        <p class="hint">„×N" = wie oft dieses Video läuft, bevor das nächste kommt. Ein einzelnes Video loopt einfach endlos.</p>
+        <button class="btn ghost block" id="plClose" style="margin-top:14px">Fertig</button>
+      </div>
+    </div>
+
+    <!-- video picker modal -->
     <div class="modal" id="picker">
       <div class="modal-card">
         <h3 id="pickerTitle">Video wählen</h3>
         <div class="media-grid" id="pickerGrid"></div>
-        <button class="btn ghost" id="pickerClose" style="width:100%; margin-top:14px">Schließen</button>
+        <button class="btn ghost block" id="pickerClose" style="margin-top:14px">Abbrechen</button>
       </div>
     </div>
 
@@ -316,157 +295,121 @@
 
       let state = null;
       let playerStatus = { left: false, middle: false, right: false };
+      let nowPlaying = { left: null, middle: null, right: null };
       let editScene = "day";
-      let pickerTarget = null;
+      let plEdit = null; // { scene, slot, list: [{videoId,repeat}] }
+      let pickCb = null;
 
-      // ---- toast ----
       function toast(msg, err) {
         const t = $("toast");
-        t.textContent = msg;
-        t.className = "toast show" + (err ? " err" : "");
-        clearTimeout(t._t);
-        t._t = setTimeout(() => (t.className = "toast"), 2400);
+        t.textContent = msg; t.className = "toast show" + (err ? " err" : "");
+        clearTimeout(t._t); t._t = setTimeout(() => (t.className = "toast"), 2200);
       }
-
-      // ---- thumbnails (generated once per video, cached) ----
-      const thumbs = {};
-      const thumbQueue = [];
-      let thumbBusy = false;
       function videoById(id) { return (state.videos || []).find((v) => v.id === id); }
       function videoUrlById(id) { const v = videoById(id); return v ? "/media/" + v.file : null; }
+      function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
-      function requestThumb(id, cb) {
-        if (!id) return cb(null);
-        if (thumbs[id]) return cb(thumbs[id]);
-        thumbQueue.push({ id, cb });
-        pumpThumbs();
-      }
-      function pumpThumbs() {
-        if (thumbBusy || thumbQueue.length === 0) return;
-        const { id, cb } = thumbQueue.shift();
-        if (thumbs[id]) { cb(thumbs[id]); return pumpThumbs(); }
+      // ---- thumbnails ----
+      const thumbs = {};
+      const tq = []; let tBusy = false;
+      function requestThumb(id, cb) { if (!id) return cb(null); if (thumbs[id]) return cb(thumbs[id]); tq.push({ id, cb }); pump(); }
+      function pump() {
+        if (tBusy || !tq.length) return;
+        const { id, cb } = tq.shift();
+        if (thumbs[id]) { cb(thumbs[id]); return pump(); }
         const url = videoUrlById(id);
-        if (!url) { cb(null); return pumpThumbs(); }
-        thumbBusy = true;
+        if (!url) { cb(null); return pump(); }
+        tBusy = true;
         const v = document.createElement("video");
-        v.muted = true; v.preload = "auto"; v.src = url; v.crossOrigin = "anonymous";
+        v.muted = true; v.preload = "auto"; v.src = url;
         let done = false;
-        const finish = (data) => {
-          if (done) return; done = true; thumbBusy = false;
-          if (data) thumbs[id] = data;
-          cb(data); setTimeout(pumpThumbs, 0);
-        };
-        v.onloadeddata = () => { try { v.currentTime = Math.min(1, (v.duration || 2) * 0.1); } catch (_) { finish(null); } };
-        v.onseeked = () => {
-          try {
-            const c = document.createElement("canvas");
-            c.width = 320; c.height = 180;
-            c.getContext("2d").drawImage(v, 0, 0, 320, 180);
-            finish(c.toDataURL("image/jpeg", 0.7));
-          } catch (_) { finish(null); }
-        };
-        v.onerror = () => finish(null);
-        setTimeout(() => finish(null), 8000); // safety timeout
+        const fin = (d) => { if (done) return; done = true; tBusy = false; if (d) thumbs[id] = d; cb(d); setTimeout(pump, 0); };
+        v.onloadeddata = () => { try { v.currentTime = Math.min(1, (v.duration || 2) * 0.1); } catch (_) { fin(null); } };
+        v.onseeked = () => { try { const c = document.createElement("canvas"); c.width = 320; c.height = 180; c.getContext("2d").drawImage(v, 0, 0, 320, 180); fin(c.toDataURL("image/jpeg", 0.7)); } catch (_) { fin(null); } };
+        v.onerror = () => fin(null);
+        setTimeout(() => fin(null), 8000);
       }
-      function applyThumb(el, id) {
-        requestThumb(id, (data) => {
-          if (data) { el.style.backgroundImage = `url(${data})`; el.textContent = ""; }
-          else el.textContent = "▶";
-        });
+      function applyThumb(el, id, fallback) {
+        requestThumb(id, (d) => { if (d) { el.style.backgroundImage = `url(${d})`; el.textContent = ""; } else el.textContent = fallback || "▶"; });
       }
 
-      // ---- render: live ----
+      function playlistSummary(list) {
+        if (!list || !list.length) return null;
+        return list.map((e) => { const v = videoById(e.videoId); return (v ? v.name : "?") + (e.repeat > 1 ? " ×" + e.repeat : ""); }).join("  ·  ");
+      }
+
+      // ---- render LIVE ----
       function renderLive() {
         if (!state) return;
         $("liveBadge").textContent = "LIVE: " + sceneName[state.liveScene];
         $("liveBadge").className = "live-badge" + (state.liveScene === "night" ? " night" : "");
-        document.querySelectorAll("#liveSwitch .seg-btn").forEach((b) => {
-          b.classList.toggle("active", b.dataset.scene === state.liveScene);
-        });
-        const row = $("liveScreens");
-        row.innerHTML = "";
+        document.querySelectorAll("#liveSwitch .seg-btn").forEach((b) => b.classList.toggle("active", b.dataset.scene === state.liveScene));
+        const row = $("liveScreens"); row.innerHTML = "";
         const liveSlots = state.scenes[state.liveScene];
         for (const slot of slots) {
-          const v = videoById(liveSlots[slot]);
+          const list = liveSlots[slot] || [];
+          const playingV = videoById(nowPlaying[slot]);
+          const now = playerStatus[slot] ? (playingV ? playingV.name : (list.length ? "startet…" : "— leer —")) : "offline";
           const el = document.createElement("div");
           el.className = "live-screen";
           el.innerHTML =
             `<div class="pos"><span class="dot ${playerStatus[slot] ? "on" : ""}"></span>${posName[slot]}</div>` +
-            `<div class="name ${v ? "" : "empty"}">${v ? escapeHtml(v.name) : "— leer —"}</div>`;
+            `<div class="info"><div class="now">${escapeHtml(now)}</div>` +
+            `<div class="sub">${list.length ? "Playlist: " + list.length + " Video(s)" : "kein Video"}</div></div>`;
           row.appendChild(el);
         }
       }
 
-      // ---- render: scene editor ----
+      // ---- render SCENES (slot cards) ----
       function renderScenes() {
         if (!state) return;
         document.querySelectorAll("#sceneTabs .tab").forEach((t) => t.classList.toggle("active", t.dataset.scene === editScene));
-        const grid = $("slotGrid");
-        grid.innerHTML = "";
+        const wrap = $("slotCards"); wrap.innerHTML = "";
         const sc = state.scenes[editScene];
         for (const slot of slots) {
-          const v = videoById(sc[slot]);
+          const list = sc[slot] || [];
+          const summary = playlistSummary(list);
           const card = document.createElement("div");
-          card.className = "slot";
+          card.className = "slot-card";
           card.innerHTML =
             `<div class="thumb"></div>` +
-            `<div class="pos">${posName[slot]}</div>` +
-            `<div class="name ${v ? "" : "empty"}">${v ? escapeHtml(v.name) : "— leer —"}</div>` +
-            `<div class="acts"></div>`;
+            `<div class="body"><div class="pos">${posName[slot]}</div>` +
+            `<div class="summary ${summary ? "" : "empty"}">${summary ? escapeHtml(summary) : "— leer —"}</div></div>` +
+            `<button class="btn primary sm">Bearbeiten</button>`;
           const thumb = card.querySelector(".thumb");
-          if (v) applyThumb(thumb, v.id); else thumb.textContent = "leer";
-          const acts = card.querySelector(".acts");
-          const change = document.createElement("button");
-          change.className = "btn primary"; change.textContent = v ? "Ändern" : "Wählen";
-          change.onclick = () => openPicker(editScene, slot);
-          acts.appendChild(change);
-          if (v) {
-            const clr = document.createElement("button");
-            clr.className = "btn ghost"; clr.textContent = "✕";
-            clr.style.flex = "0 0 auto";
-            clr.onclick = () => assign(editScene, slot, null);
-            acts.appendChild(clr);
-          }
-          grid.appendChild(card);
+          if (list.length) applyThumb(thumb, list[0].videoId, "🎬"); else thumb.textContent = "＋";
+          card.querySelector("button").onclick = () => openPlaylist(editScene, slot);
+          wrap.appendChild(card);
         }
-        $("editHint").textContent =
-          editScene === state.liveScene
-            ? "Diese Szene ist gerade LIVE – Änderungen erscheinen sofort."
-            : "Diese Szene ist nicht live. Oben auf „" + sceneName[editScene] + "“ tippen, um sie zu zeigen.";
+        $("editHint").textContent = editScene === state.liveScene
+          ? "Diese Szene ist gerade LIVE – Änderungen erscheinen sofort auf den Bildschirmen."
+          : "Diese Szene ist nicht live. Unter „Live“ auf " + sceneName[editScene] + " tippen, um sie zu zeigen.";
       }
 
-      // ---- render: media ----
+      // ---- render MEDIA ----
       function renderMedia() {
         if (!state) return;
-        const grid = $("mediaGrid");
-        grid.innerHTML = "";
-        if (!state.videos.length) {
-          grid.innerHTML = `<div class="hint" style="grid-column:1/-1">Noch keine Videos. Oben hochladen.</div>`;
-          return;
-        }
+        const grid = $("mediaGrid"); grid.innerHTML = "";
+        if (!state.videos.length) { grid.innerHTML = `<div class="empty-note" style="grid-column:1/-1">Noch keine Videos. Oben hochladen.</div>`; return; }
         for (const v of state.videos) {
           const el = document.createElement("div");
           el.className = "media";
           el.innerHTML =
             `<div class="thumb"></div>` +
-            `<div class="meta">` +
-            `<input type="text" value="${escapeAttr(v.name)}" />` +
+            `<div class="meta"><input type="text" value="${escapeHtml(v.name)}" />` +
             `<div class="size">${(v.size / 1048576).toFixed(0)} MB</div>` +
-            `<div class="acts">` +
-            `<button class="btn danger">Löschen</button>` +
-            `</div></div>`;
-          applyThumb(el.querySelector(".thumb"), v.id);
+            `<button class="btn danger sm block">Löschen</button></div>`;
+          applyThumb(el.querySelector(".thumb"), v.id, "🎬");
           const input = el.querySelector("input");
-          const saveName = () => { if (input.value.trim() && input.value !== v.name) renameVideo(v.id, input.value.trim()); };
-          input.onblur = saveName;
-          input.onkeydown = (e) => { if (e.key === "Enter") input.blur(); };
+          const save = () => { if (input.value.trim() && input.value !== v.name) renameVideo(v.id, input.value.trim()); };
+          input.onblur = save; input.onkeydown = (e) => { if (e.key === "Enter") input.blur(); };
           el.querySelector(".danger").onclick = () => deleteVideo(v.id, v.name);
           grid.appendChild(el);
         }
       }
 
-      // ---- render: settings ----
-      function renderSettings() {
+      // ---- render MORE ----
+      function renderMore() {
         if (!state) return;
         const s = state.schedule || {};
         $("schedEnabled").checked = !!s.enabled;
@@ -476,122 +419,127 @@
         $("autoEnabled").checked = !!a.enabled;
         if (a.dayStart) $("dayStart").value = a.dayStart;
         if (a.nightStart) $("nightStart").value = a.nightStart;
-        $("autostartToggle").checked = state.autostart !== false;
-        $("maintToggle").checked = !!state.maintenance;
-        if (state.paths) {
-          $("pathMedia").textContent = state.paths.media || "—";
-          $("pathConfig").textContent = state.paths.config || "—";
-        }
+        $("autostartChk").checked = state.autostart !== false;
+        $("maintChk").checked = !!state.maintenance;
+        if (state.paths && state.paths.media) $("mediaPath").textContent = state.paths.media;
       }
 
-      function renderAll() { renderLive(); renderScenes(); renderMedia(); renderSettings(); }
+      function renderAll() { renderLive(); renderScenes(); renderMedia(); renderMore(); }
+
+      // ---- playlist editor ----
+      function openPlaylist(scene, slot) {
+        const src = (state.scenes[scene][slot] || []).map((e) => ({ videoId: e.videoId, repeat: e.repeat || 1 }));
+        plEdit = { scene, slot, list: src };
+        $("plTitle").textContent = "Playlist – " + posName[slot] + " (" + sceneName[scene] + ")";
+        renderPlEditor();
+        $("plModal").classList.add("open");
+      }
+      function renderPlEditor() {
+        const wrap = $("plList"); wrap.innerHTML = "";
+        if (!plEdit.list.length) { wrap.innerHTML = `<div class="empty-note">Noch leer. Unten ein Video hinzufügen.</div>`; }
+        plEdit.list.forEach((entry, i) => {
+          const v = videoById(entry.videoId);
+          const row = document.createElement("div");
+          row.className = "pl-entry";
+          row.innerHTML =
+            `<div class="pl-move"><button data-a="up">▲</button><button data-a="down">▼</button></div>` +
+            `<div class="thumb"></div>` +
+            `<div class="nm">${escapeHtml(v ? v.name : "(gelöscht)")}</div>` +
+            `<div class="stepper"><button data-a="minus">−</button>` +
+            `<div class="val"><b>×${entry.repeat}</b><br>Wdh.</div>` +
+            `<button data-a="plus">+</button></div>` +
+            `<button class="btn danger sm" data-a="del">✕</button>`;
+          applyThumb(row.querySelector(".thumb"), entry.videoId, "🎬");
+          row.querySelectorAll("button").forEach((b) => {
+            b.onclick = () => {
+              const a = b.dataset.a;
+              if (a === "plus") entry.repeat = Math.min(999, entry.repeat + 1);
+              else if (a === "minus") entry.repeat = Math.max(1, entry.repeat - 1);
+              else if (a === "del") plEdit.list.splice(i, 1);
+              else if (a === "up" && i > 0) { [plEdit.list[i - 1], plEdit.list[i]] = [plEdit.list[i], plEdit.list[i - 1]]; }
+              else if (a === "down" && i < plEdit.list.length - 1) { [plEdit.list[i + 1], plEdit.list[i]] = [plEdit.list[i], plEdit.list[i + 1]]; }
+              savePlaylist(); renderPlEditor();
+            };
+          });
+          wrap.appendChild(row);
+        });
+      }
+      async function savePlaylist() {
+        if (!plEdit) return;
+        await api("/api/scene/playlist", { scene: plEdit.scene, slot: plEdit.slot, playlist: plEdit.list });
+      }
+      $("plAdd").addEventListener("click", () => {
+        openPicker("Video hinzufügen", (videoId) => { plEdit.list.push({ videoId, repeat: 1 }); savePlaylist(); renderPlEditor(); });
+      });
+      $("plClose").addEventListener("click", () => { $("plModal").classList.remove("open"); plEdit = null; toast("Playlist gespeichert"); });
 
       // ---- picker ----
-      function openPicker(scene, slot) {
-        pickerTarget = { scene, slot };
-        $("pickerTitle").textContent = "Video für " + posName[slot] + " (" + sceneName[scene] + ")";
-        const grid = $("pickerGrid");
-        grid.innerHTML = "";
-        const current = state.scenes[scene][slot];
-        if (!state.videos.length) {
-          grid.innerHTML = `<div class="hint" style="grid-column:1/-1">Erst ein Video in der Mediathek hochladen.</div>`;
-        }
+      function openPicker(title, cb) {
+        pickCb = cb;
+        $("pickerTitle").textContent = title;
+        const grid = $("pickerGrid"); grid.innerHTML = "";
+        if (!state.videos.length) grid.innerHTML = `<div class="empty-note" style="grid-column:1/-1">Erst ein Video in „Medien“ hochladen.</div>`;
         for (const v of state.videos) {
           const el = document.createElement("div");
-          el.className = "pick" + (v.id === current ? " sel" : "");
-          el.innerHTML = `<div class="thumb"></div><div class="nm">${escapeHtml(v.name)}</div>`;
-          applyThumb(el.querySelector(".thumb"), v.id);
-          el.onclick = () => { assign(scene, slot, v.id); closePicker(); };
+          el.className = "pick";
+          el.innerHTML = `<div class="thumb"></div><div class="nm2">${escapeHtml(v.name)}</div>`;
+          applyThumb(el.querySelector(".thumb"), v.id, "🎬");
+          el.onclick = () => { $("picker").classList.remove("open"); if (pickCb) pickCb(v.id); };
           grid.appendChild(el);
         }
         $("picker").classList.add("open");
       }
-      function closePicker() { $("picker").classList.remove("open"); }
+      $("pickerClose").addEventListener("click", () => $("picker").classList.remove("open"));
 
       // ---- API ----
-      async function api(path, body) {
-        const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-        return r.json().catch(() => ({}));
-      }
-      async function loadState() {
-        state = await fetch("/api/state").then((r) => r.json());
-        renderAll();
-        loadDisplays();
-        loadAccess();
-      }
+      async function api(p, b) { const r = await fetch(p, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) }); return r.json().catch(() => ({})); }
+      async function loadState() { state = await fetch("/api/state").then((r) => r.json()); renderAll(); loadDisplays(); loadAccess(); }
       async function setLive(scene) { await api("/api/scene/live", { scene }); toast("Live: " + sceneName[scene]); }
-      async function assign(scene, slot, videoId) { await api("/api/scene/assign", { scene, slot, videoId }); toast("Gespeichert"); }
       async function renameVideo(id, name) { await api("/api/video/rename", { id, name }); toast("Umbenannt"); }
-      async function deleteVideo(id, name) {
-        if (!confirm('Video "' + name + '" löschen?')) return;
-        await api("/api/video/delete", { id }); toast("Gelöscht");
-      }
+      async function deleteVideo(id, name) { if (!confirm('Video "' + name + '" löschen?')) return; await api("/api/video/delete", { id }); toast("Gelöscht"); }
 
       async function loadDisplays() {
         try {
           const { displays } = await fetch("/api/displays").then((r) => r.json());
           const mapping = (state && state.displayMapping) || {};
           for (const slot of slots) {
-            const sel = $("map-" + slot);
-            sel.innerHTML = `<option value="">Automatisch</option>`;
-            for (const d of displays) {
-              const o = document.createElement("option");
-              o.value = String(d.id);
-              o.textContent = d.label + (d.primary ? " (Haupt)" : "");
-              if (mapping[slot] != null && String(mapping[slot]) === String(d.id)) o.selected = true;
-              sel.appendChild(o);
-            }
+            const sel = $("map-" + slot); sel.innerHTML = `<option value="">Automatisch</option>`;
+            for (const d of displays) { const o = document.createElement("option"); o.value = String(d.id); o.textContent = d.label + (d.primary ? " (Haupt)" : ""); if (mapping[slot] != null && String(mapping[slot]) === String(d.id)) o.selected = true; sel.appendChild(o); }
           }
         } catch (_) {}
       }
       async function loadAccess() {
-        try {
-          const { urls } = await fetch("/api/access").then((r) => r.json());
-          $("accessList").innerHTML = urls
-            .map((u) => `<div class="url-item"><span class="lbl">${escapeHtml(u.label)}</span><span class="val">${escapeHtml(u.url)}</span></div>`)
-            .join("");
+        try { const { urls } = await fetch("/api/access").then((r) => r.json());
+          $("accessList").innerHTML = urls.map((u) => `<div class="url-item"><span class="lbl">${escapeHtml(u.label)}</span><span class="val">${escapeHtml(u.url)}</span></div>`).join("");
         } catch (_) {}
       }
+
+      // ---- nav ----
+      $("nav").addEventListener("click", (e) => {
+        const b = e.target.closest("button"); if (!b) return;
+        document.querySelectorAll(".bottom-nav button").forEach((x) => x.classList.toggle("active", x === b));
+        document.querySelectorAll(".tab-page").forEach((p) => p.classList.toggle("active", p.id === "page-" + b.dataset.tab));
+        window.scrollTo(0, 0);
+      });
 
       // ---- events ----
       $("liveSwitch").addEventListener("click", (e) => { const b = e.target.closest(".seg-btn"); if (b) setLive(b.dataset.scene); });
       $("sceneTabs").addEventListener("click", (e) => { const t = e.target.closest(".tab"); if (t) { editScene = t.dataset.scene; renderScenes(); } });
-      $("pickerClose").addEventListener("click", closePicker);
-      $("picker").addEventListener("click", (e) => { if (e.target.id === "picker") closePicker(); });
 
-      $("saveAuto").addEventListener("click", async () => {
-        await api("/api/autoswitch", { enabled: $("autoEnabled").checked, dayStart: $("dayStart").value, nightStart: $("nightStart").value });
-        toast("Automatik gespeichert");
-      });
-
+      $("saveAuto").addEventListener("click", async () => { await api("/api/autoswitch", { enabled: $("autoEnabled").checked, dayStart: $("dayStart").value, nightStart: $("nightStart").value }); toast("Automatik gespeichert"); });
       $("saveSched").addEventListener("click", async () => {
         const body = { enabled: $("schedEnabled").checked, sleepTime: $("sleepTime").value, wakeTime: $("wakeTime").value };
         const res = await api("/api/schedule", body);
-        if (res.applyResult && res.applyResult.error) {
-          $("schedNote").textContent = "Hinweis: " + (res.applyResult.hint || res.applyResult.error);
-          toast("Gespeichert (Zeitplan nicht angewandt)", true);
-        } else if (res.applyResult && res.applyResult.skipped) {
-          $("schedNote").textContent = "Gespeichert (greift nur auf dem Windows-PC).";
-          toast("Zeitplan gespeichert");
-        } else {
-          $("schedNote").textContent = "Aktiv: schlafen " + body.sleepTime + ", aufwachen " + body.wakeTime + ".";
-          toast("Zeitplan gespeichert");
-        }
+        if (res.applyResult && res.applyResult.error) { $("schedNote").textContent = "Hinweis: " + (res.applyResult.hint || res.applyResult.error); toast("Gespeichert (nicht angewandt)", true); }
+        else if (res.applyResult && res.applyResult.skipped) { $("schedNote").textContent = "Gespeichert (greift nur auf dem Windows-PC)."; toast("Zeitplan gespeichert"); }
+        else { $("schedNote").textContent = "Aktiv: schlafen " + body.sleepTime + ", aufwachen " + body.wakeTime + "."; toast("Zeitplan gespeichert"); }
       });
-
-      $("saveMapping").addEventListener("click", async () => {
-        const mapping = {};
-        for (const slot of slots) { const v = $("map-" + slot).value; mapping[slot] = v === "" ? null : Number(v); }
-        await api("/api/displays", mapping);
-        toast("Zuordnung gespeichert – Player starten neu");
-      });
-
+      $("saveMapping").addEventListener("click", async () => { const m = {}; for (const slot of slots) { const v = $("map-" + slot).value; m[slot] = v === "" ? null : Number(v); } await api("/api/displays", m); toast("Zuordnung gespeichert"); });
+      $("autostartChk").addEventListener("change", async (e) => { await api("/api/autostart", { enabled: e.target.checked }); toast(e.target.checked ? "Autostart an" : "Autostart aus"); });
+      $("maintChk").addEventListener("change", async (e) => { await api("/api/maintenance", { enabled: e.target.checked }); toast(e.target.checked ? "Wartungsmodus an" : "Wartungsmodus aus"); });
+      $("openFolderBtn").addEventListener("click", async () => { await api("/api/open-folder", {}); toast("Ordner wird am PC geöffnet"); });
       $("restartBtn").addEventListener("click", async () => { await api("/api/power", { action: "restart-players" }); toast("Player werden neu gestartet"); });
       $("sleepBtn").addEventListener("click", async () => { if (confirm("PC jetzt in den Schlaf schicken?")) await api("/api/power", { action: "sleep" }); });
-
-      $("autostartToggle").addEventListener("change", async (e) => { await api("/api/autostart", { enabled: e.target.checked }); toast(e.target.checked ? "Autostart aktiv" : "Autostart aus"); });
-      $("maintToggle").addEventListener("change", async (e) => { await api("/api/maintenance", { enabled: e.target.checked }); toast(e.target.checked ? "Wartungsmodus an – Player geschlossen" : "Wartungsmodus aus – Board läuft"); });
-      $("openFolder").addEventListener("click", async () => { await api("/api/open-folder", {}); toast("Ordner auf dem PC geöffnet"); });
 
       // ---- upload ----
       const dz = $("dropzone");
@@ -600,26 +548,15 @@
       ["dragenter", "dragover"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add("drag"); }));
       ["dragleave", "drop"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove("drag"); }));
       dz.addEventListener("drop", (e) => { const f = e.dataTransfer.files[0]; if (f) uploadFile(f); });
-
       function uploadFile(file) {
-        const fd = new FormData();
-        fd.append("video", file);
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", "/api/upload");
-        const prog = $("prog");
-        prog.hidden = false; prog.value = 0;
+        const fd = new FormData(); fd.append("video", file);
+        const xhr = new XMLHttpRequest(); xhr.open("POST", "/api/upload");
+        const prog = $("prog"); prog.hidden = false; prog.value = 0;
         xhr.upload.onprogress = (e) => { if (e.lengthComputable) prog.value = (e.loaded / e.total) * 100; };
-        xhr.onload = () => {
-          prog.hidden = true; $("fileInput").value = "";
-          if (xhr.status === 200) toast("Video hochgeladen"); else toast("Upload fehlgeschlagen", true);
-        };
+        xhr.onload = () => { prog.hidden = true; $("fileInput").value = ""; toast(xhr.status === 200 ? "Hochgeladen" : "Upload fehlgeschlagen", xhr.status !== 200); };
         xhr.onerror = () => { prog.hidden = true; toast("Upload fehlgeschlagen", true); };
         xhr.send(fd);
       }
-
-      // ---- utils ----
-      function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
-      function escapeAttr(s) { return escapeHtml(s); }
 
       // ---- live updates ----
       function connectWs() {
@@ -627,7 +564,7 @@
         ws.onmessage = (ev) => {
           let msg; try { msg = JSON.parse(ev.data); } catch (_) { return; }
           if (msg.type === "state") { state = msg.state; renderAll(); }
-          else if (msg.type === "status") { playerStatus = msg.players; renderLive(); }
+          else if (msg.type === "status") { playerStatus = msg.players || playerStatus; nowPlaying = msg.playing || nowPlaying; renderLive(); }
         };
         ws.onclose = () => setTimeout(connectWs, 2000);
       }

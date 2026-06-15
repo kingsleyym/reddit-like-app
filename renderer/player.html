@@ -5,95 +5,130 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Menu Board Player</title>
     <style>
-      html, body {
-        margin: 0; padding: 0; width: 100%; height: 100%;
-        background: #000; overflow: hidden; cursor: none;
-      }
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; cursor: none; }
       #stage { position: fixed; inset: 0; background: #000; }
-      video {
-        position: absolute; inset: 0; width: 100%; height: 100%;
-        object-fit: cover; background: #000;
-      }
-      video.active { opacity: 1; transition: opacity 0.4s ease; z-index: 2; }
+      video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+      video.active { opacity: 1; transition: opacity 0.45s ease; z-index: 2; }
       video.idle { opacity: 0; z-index: 1; }
       #placeholder {
-        position: absolute; inset: 0; display: flex; align-items: center;
-        justify-content: center; color: #3a3a3a; z-index: 0;
-        font-family: system-ui, sans-serif; font-size: 3vh;
+        position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+        color: #3a3a3a; z-index: 0; font-family: system-ui, sans-serif; font-size: 3vh;
       }
     </style>
   </head>
   <body>
     <div id="stage">
       <div id="placeholder">Kein Video zugewiesen</div>
-      <video id="vidA" class="active" muted playsinline loop></video>
-      <video id="vidB" class="idle" muted playsinline loop></video>
+      <video id="vidA" class="active" muted playsinline></video>
+      <video id="vidB" class="idle" muted playsinline></video>
     </div>
     <script>
       const slot = new URLSearchParams(location.search).get("screen") || "left";
       const placeholder = document.getElementById("placeholder");
       let front = document.getElementById("vidA");
       let back = document.getElementById("vidB");
-      let currentUrl = null;
 
-      // Force endless looping even if the browser's native loop ever hiccups.
-      function armLoop(video) {
-        video.loop = true;
-        video.muted = true;
-        video.onended = () => {
-          try { video.currentTime = 0; video.play().catch(() => {}); } catch (_) {}
-        };
-        // If playback stalls, nudge it back to playing.
-        video.onpause = () => {
-          if (video === front && currentUrl) {
-            setTimeout(() => { if (video.paused) video.play().catch(() => {}); }, 250);
-          }
-        };
+      // Playlist state: list = [{ videoId, url, repeat }]
+      let playlist = [];
+      let idx = 0;
+      let playsLeft = 0;
+      let currentKey = null;
+      let ws = null;
+
+      // Pure advancement step (also unit-tested in Node).
+      function nextStep(list, i, left) {
+        if (list.length <= 1) return { idx: i, playsLeft: left, action: "replay" };
+        left -= 1;
+        if (left > 0) return { idx: i, playsLeft: left, action: "replay" };
+        const ni = (i + 1) % list.length;
+        return { idx: ni, playsLeft: list[ni].repeat || 1, action: "advance" };
       }
-      armLoop(front);
-      armLoop(back);
 
-      function showVideo(url) {
-        if (url === currentUrl) return;
-        currentUrl = url;
+      function announce(videoId) {
+        try {
+          if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "playing", slot, videoId: videoId || null }));
+        } catch (_) {}
+      }
 
-        if (!url) {
+      function setPlaylist(list) {
+        list = Array.isArray(list) ? list : [];
+        const key = JSON.stringify(list.map((e) => e.url + "@" + (e.repeat || 1)));
+        if (key === currentKey) return; // unchanged, keep playing seamlessly
+        currentKey = key;
+        playlist = list;
+        idx = 0;
+        if (!list.length) {
           front.pause(); front.removeAttribute("src"); front.load();
+          back.pause(); back.removeAttribute("src"); back.load();
           placeholder.style.display = "flex";
+          announce(null);
           return;
         }
         placeholder.style.display = "none";
+        playsLeft = list[0].repeat || 1;
+        playItem(list[0]);
+      }
 
+      // Load an item into the back buffer and cross-fade it in.
+      function playItem(item) {
         const incoming = back;
-        incoming.src = url;
+        incoming.src = item.url;
+        incoming.loop = playlist.length <= 1; // single item loops natively
         incoming.load();
-
         const onReady = () => {
           incoming.play().catch(() => {});
           incoming.classList.add("active"); incoming.classList.remove("idle");
           front.classList.add("idle"); front.classList.remove("active");
           const old = front;
           front = incoming; back = old;
-          setTimeout(() => {
-            try { old.pause(); old.removeAttribute("src"); old.load(); } catch (_) {}
-          }, 700);
+          announce(item.videoId);
+          setTimeout(() => { try { old.pause(); old.removeAttribute("src"); old.load(); } catch (_) {} }, 800);
         };
-        // {once:true} prevents the swap from re-firing when the video loops.
         incoming.addEventListener("canplay", onReady, { once: true });
       }
 
-      let ws;
+      function handleEnded(e) {
+        if (e.target !== front) return; // ignore the idle buffer
+        if (!playlist.length) return;
+        const step = nextStep(playlist, idx, playsLeft);
+        idx = step.idx;
+        playsLeft = step.playsLeft;
+        if (step.action === "replay") {
+          try { front.currentTime = 0; front.play().catch(() => {}); } catch (_) {}
+        } else {
+          playItem(playlist[idx]);
+        }
+      }
+
+      function attach(video) {
+        video.muted = true;
+        video.addEventListener("ended", handleEnded);
+        // If the current video errors, skip to the next item so we never stick.
+        video.addEventListener("error", (e) => {
+          if (e.target === front && playlist.length > 1) {
+            const step = nextStep(playlist, idx, 1); // force advance
+            idx = step.idx; playsLeft = playlist[idx].repeat || 1;
+            playItem(playlist[idx]);
+          }
+        });
+        // Recover from unexpected pauses (e.g. driver hiccup).
+        video.addEventListener("pause", () => {
+          if (video === front && currentKey) {
+            setTimeout(() => { if (video.paused && !document.hidden) video.play().catch(() => {}); }, 300);
+          }
+        });
+      }
+      attach(front);
+      attach(back);
+
       function connect() {
         ws = new WebSocket("ws://" + location.host);
         ws.onopen = () => ws.send(JSON.stringify({ type: "hello", role: "player", slot }));
         ws.onmessage = (ev) => {
           let msg;
           try { msg = JSON.parse(ev.data); } catch (_) { return; }
-          if (msg.type === "live" && msg.screens) {
-            showVideo(msg.screens[slot]);
-          } else if (msg.type === "state" && msg.state && msg.state.live) {
-            showVideo(msg.state.live[slot]);
-          }
+          if (msg.type === "live" && msg.screens) setPlaylist(msg.screens[slot]);
+          else if (msg.type === "state" && msg.state && msg.state.live) setPlaylist(msg.state.live[slot]);
         };
         ws.onclose = () => setTimeout(connect, 2000);
         ws.onerror = () => { try { ws.close(); } catch (_) {} };
@@ -101,7 +136,7 @@
       connect();
 
       fetch("/api/state").then((r) => r.json())
-        .then((s) => showVideo(s.live ? s.live[slot] : null))
+        .then((s) => setPlaylist(s.live ? s.live[slot] : []))
         .catch(() => {});
     </script>
   </body>

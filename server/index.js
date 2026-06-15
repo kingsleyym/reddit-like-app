@@ -65,11 +65,11 @@ function startServer(opts) {
   // --- State ---------------------------------------------------------------
   app.get("/api/state", (req, res) => res.json(publicState()));
 
-  // --- Scene editing (assign a video to a scene + slot) --------------------
-  app.post("/api/scene/assign", (req, res) => {
-    const { scene, slot, videoId } = req.body || {};
+  // --- Scene editing: set a slot's PLAYLIST --------------------------------
+  app.post("/api/scene/playlist", (req, res) => {
+    const { scene, slot, playlist } = req.body || {};
     try {
-      store.setSceneSlot(scene, slot, videoId || null);
+      store.setScenePlaylist(scene, slot, playlist || []);
     } catch (err) {
       return res.status(400).json({ error: err.message });
     }
@@ -183,6 +183,9 @@ function startServer(opts) {
   const server = http.createServer(app);
   const wss = new WebSocketServer({ server });
 
+  // Which video each slot is currently showing (reported by the players).
+  const nowPlaying = { left: null, middle: null, right: null };
+
   wss.on("connection", (ws) => {
     ws.on("message", (raw) => {
       let msg;
@@ -191,16 +194,23 @@ function startServer(opts) {
       } catch (_) {
         return;
       }
-      if (msg && msg.type === "hello") {
+      if (!msg) return;
+      if (msg.type === "hello") {
         ws.role = msg.role;
         ws.slot = msg.slot;
         broadcastStatus();
+      } else if (msg.type === "playing" && msg.slot in nowPlaying) {
+        nowPlaying[msg.slot] = msg.videoId || null;
+        broadcastStatus();
       }
     });
-    ws.on("close", () => broadcastStatus());
+    ws.on("close", () => {
+      if (ws.role === "player" && ws.slot in nowPlaying) nowPlaying[ws.slot] = null;
+      broadcastStatus();
+    });
     ws.send(JSON.stringify({ type: "state", state: publicState() }));
-    ws.send(JSON.stringify({ type: "live", screens: liveUrls() }));
-    ws.send(JSON.stringify({ type: "status", players: connectedStatus() }));
+    ws.send(JSON.stringify({ type: "live", screens: livePlaylists() }));
+    ws.send(JSON.stringify({ type: "status", players: connectedStatus(), playing: nowPlaying }));
   });
 
   function broadcast(msg) {
@@ -211,10 +221,10 @@ function startServer(opts) {
     broadcast({ type: "state", state: publicState() });
   }
   function broadcastLive() {
-    broadcast({ type: "live", screens: liveUrls() });
+    broadcast({ type: "live", screens: livePlaylists() });
   }
   function broadcastStatus() {
-    broadcast({ type: "status", players: connectedStatus() });
+    broadcast({ type: "status", players: connectedStatus(), playing: nowPlaying });
   }
 
   function connectedStatus() {
@@ -230,9 +240,24 @@ function startServer(opts) {
     return v ? "/media/" + v.file : null;
   }
 
-  function liveUrls() {
+  // Resolve a stored playlist ([{videoId, repeat}]) to what the player needs
+  // ([{videoId, url, repeat}]), dropping entries whose video was deleted.
+  function resolvePlaylist(list) {
+    return (list || [])
+      .map((e) => {
+        const url = urlOf(e.videoId);
+        return url ? { videoId: e.videoId, url, repeat: Math.max(1, e.repeat || 1) } : null;
+      })
+      .filter(Boolean);
+  }
+
+  function livePlaylists() {
     const sc = store.getState().scenes[store.getState().liveScene];
-    return { left: urlOf(sc.left), middle: urlOf(sc.middle), right: urlOf(sc.right) };
+    return {
+      left: resolvePlaylist(sc.left),
+      middle: resolvePlaylist(sc.middle),
+      right: resolvePlaylist(sc.right),
+    };
   }
 
   function publicState() {
@@ -247,7 +272,7 @@ function startServer(opts) {
       autostart: s.autostart,
       maintenance: s.maintenance,
       paths: { media: mediaDir, config: store.dataFile },
-      live: liveUrls(),
+      live: livePlaylists(),
     };
   }
 

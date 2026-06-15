@@ -55,6 +55,25 @@ Sie wird automatisch auf GitHub gebaut (auf einem echten Windows-Rechner):
 
 ---
 
+## Playlists (Menü + Werbung mischen)
+
+Jeder Bildschirm spielt in jeder Szene eine **Playlist** statt nur ein Video.
+Eine Playlist ist eine Reihenfolge aus Einträgen, jeder mit einer Wiederhol-Zahl
+(„×N"). Beispiel für links:
+
+```
+Menü ×5  ·  Werbung A ×1  ·  Menü ×5  ·  Werbung B ×2
+```
+
+= Menüvideo läuft 5×, dann 1× Werbung A, dann wieder 5× Menü, dann 2× Werbung B,
+danach beginnt die Playlist von vorne. Ein einzelnes Video in der Playlist loopt
+einfach endlos (der klassische Fall). Werbungen lädst du wie jedes Video in der
+Mediathek hoch und ziehst sie dann in die Playlist – pro Bildschirm getrennt.
+
+Bedienung: Tab **„Playlists"** → Szene (Tag/Abend) wählen → beim Bildschirm auf
+**„Bearbeiten"** → Videos hinzufügen, Wiederholungen mit −/+ einstellen,
+Reihenfolge mit ▲/▼ ändern.
+
 ## Tag- und Abend-Szenen
 
 Das Board kennt zwei **Szenen**: **Tag** (z. B. Mittagsmenü) und **Abend**.

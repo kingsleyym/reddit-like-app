@@ -68,6 +68,25 @@ Im Dashboard unter „Nachtbetrieb":
 
 ---
 
+## Mit nur einem Monitor testen
+
+Die App läuft auch mit einem einzigen Bildschirm: Sie legt dann nur ein
+Vollbild-Fenster an (Slot „Links"). Schließt du später die zwei weiteren
+Fernseher an, verteilen sich die Slots automatisch.
+
+Da der Player den Desktop verdeckt, gibt es Tastenkürzel direkt am PC:
+
+| Kürzel | Funktion |
+|--------|----------|
+| `Strg` + `Shift` + `D` | Dashboard in einem Fenster auf diesem PC öffnen |
+| `Strg` + `Shift` + `Q` | App beenden (Kiosk verlassen, z. B. für Wartung) |
+
+Alternativ das Dashboard wie im Betrieb vom Handy öffnen
+(`http://<IP-des-PCs>:8787`).
+
+> Internet wird nur zum **Herunterladen** der `.exe` und beim Installieren
+> gebraucht. Danach läuft alles offline.
+
 ## Videos aus After Effects exportieren (wichtig!)
 
 Damit die Wiedergabe ruckelfrei läuft, **nicht** die rohe AE-Ausgabe abspielen,

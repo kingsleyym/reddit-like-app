@@ -1,6 +1,6 @@
 "use strict";
 
-const { app, BrowserWindow, screen, powerSaveBlocker } = require("electron");
+const { app, BrowserWindow, screen, powerSaveBlocker, globalShortcut } = require("electron");
 const path = require("path");
 const { Store } = require("../server/store");
 const { startServer } = require("../server");
@@ -10,6 +10,7 @@ const PORT = 8787;
 
 let store;
 let playerWindows = {}; // slot -> BrowserWindow
+let dashboardWindow = null;
 let quitting = false;
 let serverInfo = null;
 
@@ -109,6 +110,26 @@ function recreateAllPlayers() {
   setTimeout(createAllPlayers, 500);
 }
 
+// Open the dashboard in a normal (non-kiosk) window on the PC itself.
+// Handy when testing on a single monitor where the player covers the desktop.
+function openDashboardWindow() {
+  if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+    dashboardWindow.focus();
+    return;
+  }
+  dashboardWindow = new BrowserWindow({
+    width: 480,
+    height: 900,
+    title: "MenuBoard – Steuerung",
+    alwaysOnTop: true,
+    webPreferences: { contextIsolation: true, nodeIntegration: false },
+  });
+  dashboardWindow.loadURL(`http://127.0.0.1:${PORT}/dashboard`);
+  dashboardWindow.on("closed", () => {
+    dashboardWindow = null;
+  });
+}
+
 function listDisplays() {
   const sorted = [...screen.getAllDisplays()].sort(
     (a, b) => a.bounds.x - b.bounds.x
@@ -147,6 +168,15 @@ app.whenReady().then(async () => {
 
   createAllPlayers();
 
+  // Maintenance / testing shortcuts (work even over the kiosk windows):
+  //   Ctrl+Shift+D  open the dashboard in a window on this PC
+  //   Ctrl+Shift+Q  quit the app (e.g. to exit kiosk for maintenance)
+  globalShortcut.register("CommandOrControl+Shift+D", openDashboardWindow);
+  globalShortcut.register("CommandOrControl+Shift+Q", () => {
+    quitting = true;
+    app.quit();
+  });
+
   // Re-apply the saved schedule on every launch so a wake task always exists.
   const sched = store.getState().schedule;
   if (sched && sched.enabled) {
@@ -163,6 +193,10 @@ app.whenReady().then(async () => {
 
 app.on("before-quit", () => {
   quitting = true;
+});
+
+app.on("will-quit", () => {
+  globalShortcut.unregisterAll();
 });
 
 // Keep running even if all windows close (auto-recreate handles it),

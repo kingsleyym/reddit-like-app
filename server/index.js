@@ -33,6 +33,7 @@ function startServer(opts) {
 
   app.use("/media", express.static(mediaDir));
   app.use("/static", express.static(rendererDir));
+  app.use("/assets", express.static(path.join(__dirname, "..", "assets")));
 
   app.get("/player", (req, res) => res.sendFile(path.join(rendererDir, "player.html")));
   app.get(["/", "/dashboard"], (req, res) => res.sendFile(path.join(rendererDir, "dashboard.html")));
@@ -297,6 +298,13 @@ function startServer(opts) {
     urls.push({ label: "Am PC selbst", url: `http://localhost:${port}` });
     return urls;
   }
+
+  // This is a local appliance server. Disable the request/socket timeouts so
+  // large 4K video uploads over a slow home/Tailscale link are never aborted
+  // mid-transfer (Node's default requestTimeout of 5 min cut off big files).
+  server.requestTimeout = 0;
+  server.headersTimeout = 0;
+  server.timeout = 0;
 
   return new Promise((resolve) => {
     server.listen(port, () => {

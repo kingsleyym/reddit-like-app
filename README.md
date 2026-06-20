@@ -24,6 +24,35 @@ Sie wird automatisch auf GitHub gebaut (auf einem echten Windows-Rechner):
 2. Den neuesten erfolgreichen Lauf öffnen.
 3. Unter **Artifacts** → **MenuBoard-Setup** herunterladen (ZIP mit der `.exe`).
 
+### Automatische Updates
+
+Ab Version 1.1.0 aktualisiert sich jede installierte `.exe` **von selbst**: Sobald
+ein neues GitHub-Release veröffentlicht ist, lädt das Board die neue Version im
+Hintergrund und installiert sie automatisch außerhalb der Geschäftszeiten
+(zwischen 23:00 und 08:00), damit der Betrieb nie unterbrochen wird. Der Kunde
+muss nie wieder manuell installieren.
+
+So veröffentlichst du ein Update (als Entwickler):
+
+1. In `package.json` die `"version"` erhöhen (z. B. `1.1.0` → `1.1.1`).
+2. Commit, dann einen passenden Tag pushen:
+   ```
+   git tag v1.1.1
+   git push origin v1.1.1
+   ```
+3. Die GitHub-Action baut die `.exe` und veröffentlicht sie als Release. Alle
+   Boards ziehen sie automatisch.
+
+(Das Repository ist öffentlich, daher braucht das Auto-Update keinen Token.)
+
+### Logo / Splashscreen
+
+Beim Einschalten zeigt jeder Bildschirm dein **Logo** auf schwarzem Grund, bis
+das Video startet (auch als Anzeige, wenn ein Bildschirm gerade leer ist). Dafür
+einfach deine Logo-Datei als **`assets/logo.png`** ins Projekt legen (PNG mit
+transparentem Hintergrund empfohlen) und committen – beim nächsten Build ist es
+enthalten. Ohne Datei bleibt der Bildschirm einfach schwarz.
+
 ---
 
 ## Einrichtung auf dem Mini-PC (einmalig)

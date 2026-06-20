@@ -1,16 +1,21 @@
 name: Build Windows .exe
 
-# Baut die fertige MenuBoard-Setup.exe auf einem echten Windows-Rechner.
-# Laeuft automatisch bei jedem Push und kann manuell gestartet werden.
+# Normal pushes build a downloadable test artifact.
+# Pushing a version tag (e.g. v1.1.0) builds AND publishes a GitHub Release,
+# which is what the installed boards pull automatic updates from.
 on:
   push:
     branches:
       - "**"
+    tags:
+      - "v*"
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,12 +28,18 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build installer
+      - name: Build installer (test artifact)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         run: npm run dist
+
+      - name: Build and publish release (on version tag)
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: npx electron-builder --win --x64 --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload installer artifact
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/upload-artifact@v4
         with:
           name: MenuBoard-Setup

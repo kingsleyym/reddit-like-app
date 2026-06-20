@@ -3,181 +3,211 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>MenuBoard – Steuerung</title>
+    <title>MenuBoard</title>
     <style>
       :root {
-        --bg: #0a0c11; --bg2: #0f1219;
-        --card: rgba(255,255,255,0.04); --card-border: rgba(255,255,255,0.08);
-        --text: #f2f4f8; --muted: #8b94a7; --accent: #ff6b35;
-        --day: #ffb020; --night: #7c6cff; --ok: #25d07d; --bad: #ff5470;
-        --radius: 18px;
+        --bg: #0b0c0e;
+        --surface: #15161a;
+        --surface-2: #1c1d22;
+        --border: rgba(255, 255, 255, 0.07);
+        --border-2: rgba(255, 255, 255, 0.12);
+        --text: #f4f4f6;
+        --muted: #9295a0;
+        --accent: #ff5a1f;
+        --ok: #34c759;
+        --bad: #ff453a;
+        --day: #f5a623;
+        --night: #6c7bff;
+        --r: 16px;
       }
       * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
       html, body { margin: 0; }
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
-        color: var(--text);
-        background:
-          radial-gradient(1200px 600px at 80% -10%, rgba(255,107,53,0.12), transparent 60%),
-          radial-gradient(1000px 500px at -10% 10%, rgba(124,108,255,0.12), transparent 55%),
-          var(--bg);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, system-ui, sans-serif;
+        color: var(--text); background: var(--bg);
         min-height: 100vh;
-        padding: 16px 16px calc(86px + env(safe-area-inset-bottom));
-        max-width: 720px; margin: 0 auto;
+        padding: 18px 16px calc(88px + env(safe-area-inset-bottom));
+        max-width: 680px; margin: 0 auto;
+        -webkit-font-smoothing: antialiased;
       }
-      header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-      .brand { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
-      .brand span { opacity: 0.6; font-weight: 600; }
-      .live-badge { font-size: 12px; font-weight: 700; padding: 7px 12px; border-radius: 999px;
-        background: rgba(255,176,32,0.15); color: var(--day); border: 1px solid rgba(255,176,32,0.3); }
-      .live-badge.night { background: rgba(124,108,255,0.15); color: var(--night); border-color: rgba(124,108,255,0.3); }
+      svg { display: block; }
 
-      .card { background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius);
-        padding: 18px; margin-bottom: 16px; backdrop-filter: blur(12px); }
-      .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 10px; }
-      h2 { font-size: 15px; margin: 0 0 14px; font-weight: 700; }
+      header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+      .brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 650; letter-spacing: -0.2px; }
+      .brand img { height: 26px; width: auto; display: none; }
+      .brand .mark { width: 26px; height: 26px; border-radius: 7px; background: var(--accent); display: flex; align-items: center; justify-content: center; }
+      .badge { font-size: 11.5px; font-weight: 600; padding: 6px 11px; border-radius: 999px; background: rgba(245,166,35,0.13); color: var(--day); border: 1px solid rgba(245,166,35,0.25); letter-spacing: 0.2px; }
+      .badge.night { background: rgba(108,123,255,0.13); color: var(--night); border-color: rgba(108,123,255,0.25); }
+
+      .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 18px; margin-bottom: 14px; }
+      .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+      h2 { font-size: 13px; font-weight: 600; margin: 0 0 16px; letter-spacing: 0.3px; text-transform: uppercase; color: var(--muted); }
       .card-head h2 { margin: 0; }
-      .hint { color: var(--muted); font-size: 12.5px; margin: 12px 0 0; line-height: 1.5; }
+      .hint { color: var(--muted); font-size: 12.5px; margin: 14px 0 0; line-height: 1.55; }
 
       .tab-page { display: none; }
-      .tab-page.active { display: block; animation: fade 0.2s ease; }
-      @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+      .tab-page.active { display: block; animation: fade 0.18s ease; }
+      @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 
-      /* segmented control / scene tabs */
-      .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 14px; }
-      .seg-btn { border: none; border-radius: 10px; padding: 18px 8px; font-size: 17px; font-weight: 700; color: var(--muted); background: transparent; cursor: pointer; transition: 0.2s; }
-      .seg-btn.active[data-scene="day"] { background: linear-gradient(135deg,#ffb020,#ff8a00); color: #1a1200; }
-      .seg-btn.active[data-scene="night"] { background: linear-gradient(135deg,#7c6cff,#5b46ff); color: #fff; }
-      .tabs { display: flex; gap: 4px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 10px; }
-      .tab { border: none; background: transparent; color: var(--muted); padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; }
-      .tab.active { background: rgba(255,255,255,0.1); color: var(--text); }
+      /* scene segmented control */
+      .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .seg-btn { display: flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid var(--border); border-radius: 12px; padding: 18px 8px; font-size: 15px; font-weight: 600; color: var(--muted); background: var(--surface-2); cursor: pointer; transition: 0.18s; }
+      .seg-btn svg { width: 19px; height: 19px; }
+      .seg-btn.active[data-scene="day"] { background: rgba(245,166,35,0.14); color: var(--day); border-color: rgba(245,166,35,0.4); }
+      .seg-btn.active[data-scene="night"] { background: rgba(108,123,255,0.14); color: var(--night); border-color: rgba(108,123,255,0.4); }
+
+      .tabs { display: flex; gap: 6px; }
+      .tab { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); padding: 8px 13px; border-radius: 10px; font-weight: 600; font-size: 13px; cursor: pointer; }
+      .tab svg { width: 15px; height: 15px; }
+      .tab.active[data-scene="day"] { color: var(--day); border-color: rgba(245,166,35,0.4); }
+      .tab.active[data-scene="night"] { color: var(--night); border-color: rgba(108,123,255,0.4); }
 
       .live-list { display: flex; flex-direction: column; gap: 10px; }
-      .live-screen { background: rgba(0,0,0,0.25); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px; display: flex; align-items: center; gap: 12px; }
-      .live-screen .pos { font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; flex: 0 0 86px; display: flex; align-items: center; gap: 7px; }
-      .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--bad); flex: 0 0 auto; }
-      .dot.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+      .live-screen { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; }
+      .live-screen .pos { font-size: 12px; color: var(--muted); font-weight: 600; flex: 0 0 64px; display: flex; align-items: center; gap: 8px; }
+      .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); flex: 0 0 auto; }
+      .dot.on { background: var(--ok); }
       .live-screen .info { flex: 1; min-width: 0; }
       .live-screen .now { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .live-screen .sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+      .live-screen .sub { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
 
-      .slot-card { background: rgba(0,0,0,0.25); border: 1px solid var(--card-border); border-radius: 14px; padding: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
-      .slot-card .thumb { width: 86px; height: 50px; border-radius: 8px; background: #11141c center/cover no-repeat; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; color: #3a4150; font-size: 18px; }
+      .slot-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 13px; }
+      .slot-card .thumb { width: 88px; height: 50px; border-radius: 8px; background: #0c0d10 center/cover no-repeat; flex: 0 0 auto; }
       .slot-card .body { flex: 1; min-width: 0; }
-      .slot-card .pos { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
-      .slot-card .summary { font-size: 13.5px; font-weight: 600; margin-top: 3px; line-height: 1.35; word-break: break-word; }
+      .slot-card .pos { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: 0.3px; }
+      .slot-card .summary { font-size: 13.5px; font-weight: 550; margin-top: 4px; line-height: 1.4; word-break: break-word; }
       .slot-card .summary.empty { color: var(--muted); font-weight: 400; }
 
-      button.btn { border: none; border-radius: 10px; padding: 11px 14px; font-size: 14px; font-weight: 600; cursor: pointer; background: rgba(255,255,255,0.08); color: var(--text); }
+      button.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid transparent; border-radius: 11px; padding: 12px 15px; font-size: 14px; font-weight: 600; cursor: pointer; background: var(--surface-2); color: var(--text); font-family: inherit; }
+      button.btn svg { width: 16px; height: 16px; }
       button.btn.primary { background: var(--accent); color: #fff; }
-      button.btn.ghost { background: transparent; border: 1px solid var(--card-border); }
-      button.btn.danger { background: rgba(255,84,112,0.15); color: var(--bad); }
+      button.btn.ghost { background: transparent; border-color: var(--border-2); color: var(--text); }
+      button.btn.danger { background: transparent; border-color: rgba(255,69,58,0.4); color: var(--bad); }
       button.btn.block { width: 100%; }
-      button.btn.sm { padding: 8px 11px; font-size: 13px; }
-      button.btn:active { transform: scale(0.97); }
+      button.btn.sm { padding: 9px 12px; font-size: 13px; }
+      button.btn:active { opacity: 0.7; }
 
-      .row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-      .toggle { position: relative; width: 50px; height: 28px; display: inline-block; flex: 0 0 auto; }
+      .row-between { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+      .row-between .lbl { font-size: 14px; font-weight: 500; }
+      .toggle { position: relative; width: 48px; height: 28px; display: inline-block; flex: 0 0 auto; }
       .toggle input { display: none; }
-      .toggle .track { position: absolute; inset: 0; background: rgba(255,255,255,0.12); border-radius: 999px; transition: 0.2s; }
+      .toggle .track { position: absolute; inset: 0; background: rgba(255,255,255,0.14); border-radius: 999px; transition: 0.2s; }
       .toggle .track::after { content: ""; position: absolute; width: 22px; height: 22px; border-radius: 50%; background: #fff; top: 3px; left: 3px; transition: 0.2s; }
       .toggle input:checked + .track { background: var(--ok); }
-      .toggle input:checked + .track::after { left: 25px; }
-      .time-row { display: flex; gap: 12px; margin-top: 14px; }
+      .toggle input:checked + .track::after { left: 23px; }
+
+      .time-row { display: flex; gap: 12px; margin-top: 16px; }
       .field { flex: 1; }
-      .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-      input[type="time"], input[type="text"], select {
-        width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--card-border);
-        background: rgba(0,0,0,0.3); color: var(--text); font-size: 15px; font-family: inherit;
+      .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 7px; }
+      input[type="time"], input[type="text"] {
+        width: 100%; padding: 12px 13px; border-radius: 11px; border: 1px solid var(--border-2);
+        background: var(--surface-2); color: var(--text); font-size: 15px; font-family: inherit;
+      }
+      input:focus { outline: none; border-color: var(--accent); }
+      select {
+        width: 100%; padding: 12px 36px 12px 13px; border-radius: 11px; border: 1px solid var(--border-2);
+        background: var(--surface-2); color: var(--text); font-size: 15px; font-family: inherit;
+        appearance: none; -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239295a0' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: right 13px center;
       }
 
-      .dropzone { border: 1.5px dashed var(--card-border); border-radius: 12px; padding: 22px; text-align: center; color: var(--muted); font-size: 13px; cursor: pointer; transition: 0.2s; margin-bottom: 14px; }
-      .dropzone.drag { border-color: var(--accent); background: rgba(255,107,53,0.08); color: var(--text); }
+      .dropzone { border: 1.5px dashed var(--border-2); border-radius: 12px; padding: 26px; text-align: center; color: var(--muted); font-size: 13.5px; cursor: pointer; transition: 0.18s; margin-bottom: 14px; }
+      .dropzone.drag { border-color: var(--accent); color: var(--text); background: rgba(255,90,31,0.06); }
       .media-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
       @media (max-width: 420px) { .media-grid { grid-template-columns: 1fr; } }
-      .media { background: rgba(0,0,0,0.25); border: 1px solid var(--card-border); border-radius: 12px; overflow: hidden; }
-      .media .thumb { aspect-ratio: 16/9; background: #11141c center/cover no-repeat; display: flex; align-items: center; justify-content: center; color: #3a4150; font-size: 22px; }
-      .media .meta { padding: 9px 10px 10px; }
-      .media .meta input { font-size: 13px; padding: 8px 9px; margin-bottom: 7px; }
-      .media .size { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
-      progress { width: 100%; height: 8px; border-radius: 8px; overflow: hidden; margin-bottom: 12px; }
+      .media { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+      .media .thumb { aspect-ratio: 16/9; background: #0c0d10 center/cover no-repeat; }
+      .media .meta { padding: 10px; }
+      .media .meta input { font-size: 13px; padding: 9px 10px; margin-bottom: 8px; }
+      .media .size { font-size: 11px; color: var(--muted); margin-bottom: 9px; }
+      progress { width: 100%; height: 6px; border-radius: 6px; overflow: hidden; margin-bottom: 12px; border: none; }
+      progress::-webkit-progress-bar { background: var(--surface-2); }
+      progress::-webkit-progress-value { background: var(--accent); }
 
-      .sub { margin-top: 18px; }
+      .sub { margin-top: 20px; }
       .sub:first-child { margin-top: 0; }
-      .sub h3 { font-size: 12px; margin: 0 0 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-      .url-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; background: rgba(0,0,0,0.25); border-radius: 10px; margin-bottom: 8px; }
+      .sub h3 { font-size: 11px; margin: 0 0 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 600; }
+      .url-item { display: flex; flex-direction: column; gap: 3px; padding: 11px 13px; background: var(--surface-2); border-radius: 11px; margin-bottom: 8px; }
       .url-item .lbl { font-size: 11px; color: var(--muted); }
-      .url-item .val { font-size: 14px; font-weight: 600; font-family: ui-monospace, monospace; word-break: break-all; }
-      .path { font-family: ui-monospace, monospace; font-size: 12px; background: rgba(0,0,0,0.3); padding: 8px 10px; border-radius: 8px; word-break: break-all; color: var(--muted); }
-      .map-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-      .map-row span { width: 70px; font-size: 13px; color: var(--muted); }
+      .url-item .val { font-size: 14px; font-weight: 600; font-family: ui-monospace, "SF Mono", monospace; word-break: break-all; }
+      .path { font-family: ui-monospace, monospace; font-size: 12px; background: var(--surface-2); padding: 11px 13px; border-radius: 11px; word-break: break-all; color: var(--muted); }
+      .map-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+      .map-row span { width: 58px; font-size: 13px; color: var(--muted); }
 
-      /* bottom nav */
       .bottom-nav {
         position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
         display: flex; justify-content: space-around;
-        background: rgba(12,14,20,0.92); backdrop-filter: blur(14px);
-        border-top: 1px solid var(--card-border); padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+        background: rgba(11,12,14,0.9); backdrop-filter: blur(16px);
+        border-top: 1px solid var(--border); padding: 9px 0 calc(9px + env(safe-area-inset-bottom));
       }
-      .bottom-nav button { background: none; border: none; color: var(--muted); font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px 16px; }
-      .bottom-nav button .ic { font-size: 20px; }
-      .bottom-nav button.active { color: var(--accent); }
+      .bottom-nav button { background: none; border: none; color: var(--muted); font-size: 10.5px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 4px 18px; font-family: inherit; }
+      .bottom-nav button svg { width: 22px; height: 22px; stroke-width: 1.7; }
+      .bottom-nav button.active { color: var(--text); }
 
-      /* modal */
-      .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: none; align-items: flex-end; z-index: 60; }
+      .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: none; align-items: flex-end; z-index: 60; }
       .modal.open { display: flex; }
-      .modal-card { background: var(--bg2); border-top-left-radius: 22px; border-top-right-radius: 22px; padding: 18px; width: 100%; max-height: 86vh; overflow-y: auto; }
-      @media (min-width: 560px) { .modal { align-items: center; justify-content: center; } .modal-card { max-width: 560px; border-radius: 22px; } }
-      .modal-card h3 { margin: 4px 0 16px; font-size: 16px; }
+      .modal-card { background: var(--surface); border: 1px solid var(--border); border-bottom: none; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 20px; width: 100%; max-height: 86vh; overflow-y: auto; }
+      @media (min-width: 560px) { .modal { align-items: center; justify-content: center; } .modal-card { max-width: 540px; border-radius: 20px; border-bottom: 1px solid var(--border); } }
+      .modal-card h3 { margin: 2px 0 18px; font-size: 16px; font-weight: 650; }
 
-      .pl-entry { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.25); border: 1px solid var(--card-border); border-radius: 12px; padding: 10px; margin-bottom: 10px; }
-      .pl-entry .thumb { width: 64px; height: 38px; border-radius: 6px; background: #11141c center/cover no-repeat; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; color: #3a4150; }
+      .pl-entry { display: flex; align-items: center; gap: 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px; margin-bottom: 10px; }
+      .pl-entry .thumb { width: 60px; height: 36px; border-radius: 6px; background: #0c0d10 center/cover no-repeat; flex: 0 0 auto; }
       .pl-entry .nm { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .stepper { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
-      .stepper button { width: 30px; height: 30px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: var(--text); font-size: 16px; font-weight: 700; cursor: pointer; }
-      .stepper .val { min-width: 54px; text-align: center; font-size: 12px; }
-      .stepper .val b { font-size: 15px; }
-      .pl-move { display: flex; flex-direction: column; gap: 2px; flex: 0 0 auto; }
-      .pl-move button { width: 26px; height: 22px; border: none; background: rgba(255,255,255,0.08); color: var(--muted); border-radius: 6px; cursor: pointer; font-size: 11px; }
-      .pick { cursor: pointer; border: 2px solid transparent; border-radius: 12px; overflow: hidden; background: rgba(0,0,0,0.25); }
-      .pick .thumb { aspect-ratio: 16/9; background: #11141c center/cover no-repeat; display: flex; align-items: center; justify-content: center; color: #3a4150; font-size: 20px; }
-      .pick .nm2 { padding: 7px 9px; font-size: 12px; font-weight: 600; word-break: break-word; }
+      .stepper { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+      .stepper button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border-2); background: transparent; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+      .stepper button svg { width: 14px; height: 14px; }
+      .stepper .val { min-width: 46px; text-align: center; font-size: 11px; color: var(--muted); }
+      .stepper .val b { display: block; font-size: 15px; color: var(--text); }
+      .pl-move { display: flex; flex-direction: column; gap: 3px; flex: 0 0 auto; }
+      .pl-move button { width: 26px; height: 21px; border: 1px solid var(--border); background: transparent; color: var(--muted); border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+      .pl-move button svg { width: 13px; height: 13px; }
+      .icon-btn { width: 34px; height: 34px; border: 1px solid rgba(255,69,58,0.35); background: transparent; color: var(--bad); border-radius: 9px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+      .icon-btn svg { width: 15px; height: 15px; }
 
-      .toast { position: fixed; left: 50%; bottom: 96px; transform: translate(-50%,20px); background: var(--ok); color: #04150c; font-weight: 700; padding: 12px 18px; border-radius: 12px; opacity: 0; transition: 0.25s; pointer-events: none; z-index: 99; font-size: 14px; }
+      .pick { cursor: pointer; border: 2px solid transparent; border-radius: 12px; overflow: hidden; background: var(--surface-2); }
+      .pick .thumb { aspect-ratio: 16/9; background: #0c0d10 center/cover no-repeat; }
+      .pick .nm2 { padding: 8px 10px; font-size: 12px; font-weight: 600; word-break: break-word; }
+
+      .toast { position: fixed; left: 50%; bottom: 100px; transform: translate(-50%,16px); background: var(--text); color: #0b0c0e; font-weight: 650; padding: 12px 18px; border-radius: 12px; opacity: 0; transition: 0.22s; pointer-events: none; z-index: 99; font-size: 14px; }
       .toast.show { opacity: 1; transform: translate(-50%,0); }
-      .toast.err { background: var(--bad); color: #2a0410; }
-      .empty-note { color: var(--muted); font-size: 13px; padding: 8px 0; }
+      .toast.err { background: var(--bad); color: #fff; }
+      .empty-note { color: var(--muted); font-size: 13px; padding: 10px 0; }
     </style>
   </head>
   <body>
     <header>
-      <div class="brand">🍽️ Menu<span>Board</span></div>
-      <div class="live-badge" id="liveBadge">LIVE</div>
+      <div class="brand">
+        <img id="brandLogo" src="/assets/logo.png" alt="MenuBoard" />
+        <span class="mark" id="brandMark"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M9 21h6M12 17v4"/></svg></span>
+        <span id="brandText">MenuBoard</span>
+      </div>
+      <div class="badge" id="liveBadge">LIVE</div>
     </header>
 
-    <!-- ============ LIVE ============ -->
+    <!-- LIVE -->
     <div class="tab-page active" id="page-live">
       <div class="card">
-        <h2>Was läuft gerade live?</h2>
+        <h2>Live-Anzeige</h2>
         <div class="seg" id="liveSwitch">
-          <button class="seg-btn" data-scene="day">☀️ Tag</button>
-          <button class="seg-btn" data-scene="night">🌙 Abend</button>
+          <button class="seg-btn" data-scene="day"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6 19 19M19 5l-1.4 1.4M6.4 17.6 5 19"/></svg>Tag</button>
+          <button class="seg-btn" data-scene="night"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5z"/></svg>Abend</button>
         </div>
       </div>
       <div class="card">
-        <h2>Status der Bildschirme</h2>
+        <h2>Bildschirme</h2>
         <div class="live-list" id="liveScreens"></div>
       </div>
     </div>
 
-    <!-- ============ SCENES ============ -->
+    <!-- PLAYLISTS -->
     <div class="tab-page" id="page-scenes">
       <div class="card">
         <div class="card-head">
-          <h2>Playlists pro Bildschirm</h2>
+          <h2>Playlists</h2>
           <div class="tabs" id="sceneTabs">
-            <button class="tab" data-scene="day">☀️ Tag</button>
-            <button class="tab" data-scene="night">🌙 Abend</button>
+            <button class="tab" data-scene="day"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v1.5M12 19.5V21M3 12h1.5M19.5 12H21"/></svg>Tag</button>
+            <button class="tab" data-scene="night"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5z"/></svg>Abend</button>
           </div>
         </div>
         <div id="slotCards"></div>
@@ -185,103 +215,93 @@
       </div>
     </div>
 
-    <!-- ============ MEDIA ============ -->
+    <!-- MEDIA -->
     <div class="tab-page" id="page-media">
       <div class="card">
         <h2>Mediathek</h2>
-        <div class="dropzone" id="dropzone">📁 Video / Werbung hierher ziehen oder tippen</div>
+        <div class="dropzone" id="dropzone">Video oder Werbung hierher ziehen — oder tippen zum Auswählen</div>
         <input type="file" id="fileInput" accept="video/*" hidden />
         <progress id="prog" value="0" max="100" hidden></progress>
         <div class="media-grid" id="mediaGrid"></div>
       </div>
     </div>
 
-    <!-- ============ MORE ============ -->
+    <!-- MORE -->
     <div class="tab-page" id="page-more">
       <div class="card">
         <div class="row-between">
-          <h2 style="margin:0">Automatik Tag → Abend</h2>
+          <h2 style="margin:0">Automatik Tag / Abend</h2>
           <label class="toggle"><input type="checkbox" id="autoEnabled" /><span class="track"></span></label>
         </div>
         <div class="time-row">
           <div class="field"><label>Tag ab</label><input type="time" id="dayStart" value="11:00" /></div>
           <div class="field"><label>Abend ab</label><input type="time" id="nightStart" value="17:00" /></div>
         </div>
-        <button class="btn primary block" id="saveAuto" style="margin-top:14px">Automatik speichern</button>
+        <button class="btn primary block" id="saveAuto" style="margin-top:16px">Speichern</button>
       </div>
 
       <div class="card">
         <div class="row-between">
-          <h2 style="margin:0">Nachtbetrieb (Schlafen &amp; Aufwachen)</h2>
+          <h2 style="margin:0">Nachtbetrieb</h2>
           <label class="toggle"><input type="checkbox" id="schedEnabled" /><span class="track"></span></label>
         </div>
         <div class="time-row">
           <div class="field"><label>Schlafen um</label><input type="time" id="sleepTime" value="23:30" /></div>
           <div class="field"><label>Aufwachen um</label><input type="time" id="wakeTime" value="08:30" /></div>
         </div>
-        <button class="btn primary block" id="saveSched" style="margin-top:12px">Zeitplan speichern</button>
+        <button class="btn primary block" id="saveSched" style="margin-top:14px">Speichern</button>
         <p class="hint" id="schedNote"></p>
       </div>
 
       <div class="card">
-        <h2>Zugriff (Dashboard öffnen)</h2>
+        <h2>Zugriff</h2>
         <div id="accessList"></div>
       </div>
 
       <div class="card">
         <h2>Monitor-Zuordnung</h2>
-        <div class="map-row"><span>⬅️ Links</span><select id="map-left"></select></div>
-        <div class="map-row"><span>⏺️ Mitte</span><select id="map-middle"></select></div>
-        <div class="map-row"><span>➡️ Rechts</span><select id="map-right"></select></div>
-        <button class="btn primary block" id="saveMapping" style="margin-top:8px">Zuordnung anwenden</button>
+        <div class="map-row"><span>Links</span><select id="map-left"></select></div>
+        <div class="map-row"><span>Mitte</span><select id="map-middle"></select></div>
+        <div class="map-row"><span>Rechts</span><select id="map-right"></select></div>
+        <button class="btn primary block" id="saveMapping" style="margin-top:8px">Anwenden</button>
       </div>
 
       <div class="card">
-        <h2>System &amp; Wartung</h2>
-        <div class="row-between" style="margin-bottom:14px">
-          <span style="font-size:14px">Mit Windows automatisch starten</span>
-          <label class="toggle"><input type="checkbox" id="autostartChk" /><span class="track"></span></label>
-        </div>
-        <div class="row-between" style="margin-bottom:14px">
-          <span style="font-size:14px">Wartungsmodus (Player schließen)</span>
-          <label class="toggle"><input type="checkbox" id="maintChk" /><span class="track"></span></label>
-        </div>
-        <p class="hint" style="margin-top:0; margin-bottom:14px">Im Wartungsmodus werden die Vollbild-Player geschlossen, damit du am PC arbeiten kannst. Die App läuft im Hintergrund weiter.</p>
-        <button class="btn ghost block" id="openFolderBtn" style="margin-bottom:8px">📂 Medien-Ordner auf dem PC öffnen</button>
-        <button class="btn ghost block" id="restartBtn" style="margin-bottom:8px">🔄 Player neu starten</button>
-        <button class="btn ghost block" id="sleepBtn" style="margin-bottom:14px">😴 PC jetzt schlafen legen</button>
-        <div class="sub">
-          <h3>Speicherort der Videos</h3>
-          <div class="path" id="mediaPath">…</div>
-        </div>
+        <h2>System</h2>
+        <div class="row-between" style="margin-bottom:16px"><span class="lbl">Mit Windows automatisch starten</span><label class="toggle"><input type="checkbox" id="autostartChk" /><span class="track"></span></label></div>
+        <div class="row-between" style="margin-bottom:14px"><span class="lbl">Wartungsmodus (Player schließen)</span><label class="toggle"><input type="checkbox" id="maintChk" /><span class="track"></span></label></div>
+        <p class="hint" style="margin-top:0; margin-bottom:16px">Im Wartungsmodus werden die Vollbild-Player geschlossen, damit du am PC arbeiten kannst. Die App läuft im Hintergrund weiter.</p>
+        <button class="btn ghost block" id="openFolderBtn" style="margin-bottom:8px">Medien-Ordner öffnen</button>
+        <button class="btn ghost block" id="restartBtn" style="margin-bottom:8px">Player neu starten</button>
+        <button class="btn ghost block" id="sleepBtn" style="margin-bottom:16px">PC jetzt schlafen legen</button>
+        <div class="sub"><h3>Speicherort der Videos</h3><div class="path" id="mediaPath">…</div></div>
       </div>
     </div>
 
-    <!-- bottom nav -->
     <nav class="bottom-nav" id="nav">
-      <button data-tab="live" class="active"><span class="ic">📺</span>Live</button>
-      <button data-tab="scenes"><span class="ic">🎬</span>Playlists</button>
-      <button data-tab="media"><span class="ic">📁</span>Medien</button>
-      <button data-tab="more"><span class="ic">⚙️</span>Mehr</button>
+      <button data-tab="live" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M9 21h6M12 17v4"/></svg>Live</button>
+      <button data-tab="scenes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="3.6" cy="6" r="1.2"/><circle cx="3.6" cy="12" r="1.2"/><circle cx="3.6" cy="18" r="1.2"/></svg>Playlists</button>
+      <button data-tab="media"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h3.5l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Medien</button>
+      <button data-tab="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h7M15 18h5"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="13" cy="18" r="2"/></svg>Mehr</button>
     </nav>
 
-    <!-- playlist editor modal -->
+    <!-- playlist editor -->
     <div class="modal" id="plModal">
       <div class="modal-card">
         <h3 id="plTitle">Playlist</h3>
         <div id="plList"></div>
-        <button class="btn primary block" id="plAdd" style="margin-top:6px">+ Video / Werbung hinzufügen</button>
-        <p class="hint">„×N" = wie oft dieses Video läuft, bevor das nächste kommt. Ein einzelnes Video loopt einfach endlos.</p>
-        <button class="btn ghost block" id="plClose" style="margin-top:14px">Fertig</button>
+        <button class="btn primary block" id="plAdd" style="margin-top:6px">Video / Werbung hinzufügen</button>
+        <p class="hint">Die Zahl gibt an, wie oft ein Video läuft, bevor das nächste kommt. Ein einzelnes Video läuft endlos.</p>
+        <button class="btn ghost block" id="plClose" style="margin-top:16px">Fertig</button>
       </div>
     </div>
 
-    <!-- video picker modal -->
+    <!-- picker -->
     <div class="modal" id="picker">
       <div class="modal-card">
         <h3 id="pickerTitle">Video wählen</h3>
         <div class="media-grid" id="pickerGrid"></div>
-        <button class="btn ghost block" id="pickerClose" style="margin-top:14px">Abbrechen</button>
+        <button class="btn ghost block" id="pickerClose" style="margin-top:16px">Abbrechen</button>
       </div>
     </div>
 
@@ -290,38 +310,38 @@
     <script>
       const $ = (id) => document.getElementById(id);
       const slots = ["left", "middle", "right"];
-      const posName = { left: "⬅️ Links", middle: "⏺️ Mitte", right: "➡️ Rechts" };
+      const posName = { left: "Links", middle: "Mitte", right: "Rechts" };
       const sceneName = { day: "Tag", night: "Abend" };
+      const ICON = {
+        up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14l6-6 6 6"/></svg>',
+        down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10l6 6 6-6"/></svg>',
+        plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
+        minus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>',
+        trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg>',
+      };
 
       let state = null;
       let playerStatus = { left: false, middle: false, right: false };
       let nowPlaying = { left: null, middle: null, right: null };
       let editScene = "day";
-      let plEdit = null; // { scene, slot, list: [{videoId,repeat}] }
+      let plEdit = null;
       let pickCb = null;
 
-      function toast(msg, err) {
-        const t = $("toast");
-        t.textContent = msg; t.className = "toast show" + (err ? " err" : "");
-        clearTimeout(t._t); t._t = setTimeout(() => (t.className = "toast"), 2200);
-      }
+      function toast(msg, err) { const t = $("toast"); t.textContent = msg; t.className = "toast show" + (err ? " err" : ""); clearTimeout(t._t); t._t = setTimeout(() => (t.className = "toast"), 2200); }
       function videoById(id) { return (state.videos || []).find((v) => v.id === id); }
       function videoUrlById(id) { const v = videoById(id); return v ? "/media/" + v.file : null; }
       function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
-      // ---- thumbnails ----
-      const thumbs = {};
-      const tq = []; let tBusy = false;
+      // thumbnails
+      const thumbs = {}; const tq = []; let tBusy = false;
       function requestThumb(id, cb) { if (!id) return cb(null); if (thumbs[id]) return cb(thumbs[id]); tq.push({ id, cb }); pump(); }
       function pump() {
         if (tBusy || !tq.length) return;
         const { id, cb } = tq.shift();
         if (thumbs[id]) { cb(thumbs[id]); return pump(); }
-        const url = videoUrlById(id);
-        if (!url) { cb(null); return pump(); }
+        const url = videoUrlById(id); if (!url) { cb(null); return pump(); }
         tBusy = true;
-        const v = document.createElement("video");
-        v.muted = true; v.preload = "auto"; v.src = url;
+        const v = document.createElement("video"); v.muted = true; v.preload = "auto"; v.src = url;
         let done = false;
         const fin = (d) => { if (done) return; done = true; tBusy = false; if (d) thumbs[id] = d; cb(d); setTimeout(pump, 0); };
         v.onloadeddata = () => { try { v.currentTime = Math.min(1, (v.duration || 2) * 0.1); } catch (_) { fin(null); } };
@@ -329,38 +349,31 @@
         v.onerror = () => fin(null);
         setTimeout(() => fin(null), 8000);
       }
-      function applyThumb(el, id, fallback) {
-        requestThumb(id, (d) => { if (d) { el.style.backgroundImage = `url(${d})`; el.textContent = ""; } else el.textContent = fallback || "▶"; });
-      }
+      function applyThumb(el, id) { requestThumb(id, (d) => { if (d) el.style.backgroundImage = `url(${d})`; }); }
 
       function playlistSummary(list) {
         if (!list || !list.length) return null;
-        return list.map((e) => { const v = videoById(e.videoId); return (v ? v.name : "?") + (e.repeat > 1 ? " ×" + e.repeat : ""); }).join("  ·  ");
+        return list.map((e) => { const v = videoById(e.videoId); return (v ? v.name : "?") + (e.repeat > 1 ? " " + e.repeat + "×" : ""); }).join("   ·   ");
       }
 
-      // ---- render LIVE ----
       function renderLive() {
         if (!state) return;
-        $("liveBadge").textContent = "LIVE: " + sceneName[state.liveScene];
-        $("liveBadge").className = "live-badge" + (state.liveScene === "night" ? " night" : "");
+        $("liveBadge").textContent = "LIVE · " + sceneName[state.liveScene];
+        $("liveBadge").className = "badge" + (state.liveScene === "night" ? " night" : "");
         document.querySelectorAll("#liveSwitch .seg-btn").forEach((b) => b.classList.toggle("active", b.dataset.scene === state.liveScene));
         const row = $("liveScreens"); row.innerHTML = "";
         const liveSlots = state.scenes[state.liveScene];
         for (const slot of slots) {
           const list = liveSlots[slot] || [];
           const playingV = videoById(nowPlaying[slot]);
-          const now = playerStatus[slot] ? (playingV ? playingV.name : (list.length ? "startet…" : "— leer —")) : "offline";
-          const el = document.createElement("div");
-          el.className = "live-screen";
-          el.innerHTML =
-            `<div class="pos"><span class="dot ${playerStatus[slot] ? "on" : ""}"></span>${posName[slot]}</div>` +
-            `<div class="info"><div class="now">${escapeHtml(now)}</div>` +
-            `<div class="sub">${list.length ? "Playlist: " + list.length + " Video(s)" : "kein Video"}</div></div>`;
+          const now = playerStatus[slot] ? (playingV ? playingV.name : (list.length ? "startet …" : "kein Video")) : "offline";
+          const el = document.createElement("div"); el.className = "live-screen";
+          el.innerHTML = `<div class="pos"><span class="dot ${playerStatus[slot] ? "on" : ""}"></span>${posName[slot]}</div>` +
+            `<div class="info"><div class="now">${escapeHtml(now)}</div><div class="sub">${list.length ? "Playlist · " + list.length + " Video(s)" : "leer"}</div></div>`;
           row.appendChild(el);
         }
       }
 
-      // ---- render SCENES (slot cards) ----
       function renderScenes() {
         if (!state) return;
         document.querySelectorAll("#sceneTabs .tab").forEach((t) => t.classList.toggle("active", t.dataset.scene === editScene));
@@ -369,37 +382,28 @@
         for (const slot of slots) {
           const list = sc[slot] || [];
           const summary = playlistSummary(list);
-          const card = document.createElement("div");
-          card.className = "slot-card";
-          card.innerHTML =
-            `<div class="thumb"></div>` +
-            `<div class="body"><div class="pos">${posName[slot]}</div>` +
-            `<div class="summary ${summary ? "" : "empty"}">${summary ? escapeHtml(summary) : "— leer —"}</div></div>` +
+          const card = document.createElement("div"); card.className = "slot-card";
+          card.innerHTML = `<div class="thumb"></div><div class="body"><div class="pos">${posName[slot]}</div>` +
+            `<div class="summary ${summary ? "" : "empty"}">${summary ? escapeHtml(summary) : "leer"}</div></div>` +
             `<button class="btn primary sm">Bearbeiten</button>`;
-          const thumb = card.querySelector(".thumb");
-          if (list.length) applyThumb(thumb, list[0].videoId, "🎬"); else thumb.textContent = "＋";
+          if (list.length) applyThumb(card.querySelector(".thumb"), list[0].videoId);
           card.querySelector("button").onclick = () => openPlaylist(editScene, slot);
           wrap.appendChild(card);
         }
         $("editHint").textContent = editScene === state.liveScene
-          ? "Diese Szene ist gerade LIVE – Änderungen erscheinen sofort auf den Bildschirmen."
-          : "Diese Szene ist nicht live. Unter „Live“ auf " + sceneName[editScene] + " tippen, um sie zu zeigen.";
+          ? "Diese Szene ist gerade live – Änderungen erscheinen sofort."
+          : "Diese Szene ist nicht live. Unter Live auf " + sceneName[editScene] + " tippen, um sie zu zeigen.";
       }
 
-      // ---- render MEDIA ----
       function renderMedia() {
         if (!state) return;
         const grid = $("mediaGrid"); grid.innerHTML = "";
         if (!state.videos.length) { grid.innerHTML = `<div class="empty-note" style="grid-column:1/-1">Noch keine Videos. Oben hochladen.</div>`; return; }
         for (const v of state.videos) {
-          const el = document.createElement("div");
-          el.className = "media";
-          el.innerHTML =
-            `<div class="thumb"></div>` +
-            `<div class="meta"><input type="text" value="${escapeHtml(v.name)}" />` +
-            `<div class="size">${(v.size / 1048576).toFixed(0)} MB</div>` +
-            `<button class="btn danger sm block">Löschen</button></div>`;
-          applyThumb(el.querySelector(".thumb"), v.id, "🎬");
+          const el = document.createElement("div"); el.className = "media";
+          el.innerHTML = `<div class="thumb"></div><div class="meta"><input type="text" value="${escapeHtml(v.name)}" />` +
+            `<div class="size">${(v.size / 1048576).toFixed(0)} MB</div><button class="btn danger sm block">Löschen</button></div>`;
+          applyThumb(el.querySelector(".thumb"), v.id);
           const input = el.querySelector("input");
           const save = () => { if (input.value.trim() && input.value !== v.name) renameVideo(v.id, input.value.trim()); };
           input.onblur = save; input.onkeydown = (e) => { if (e.key === "Enter") input.blur(); };
@@ -408,17 +412,12 @@
         }
       }
 
-      // ---- render MORE ----
       function renderMore() {
         if (!state) return;
         const s = state.schedule || {};
-        $("schedEnabled").checked = !!s.enabled;
-        if (s.sleepTime) $("sleepTime").value = s.sleepTime;
-        if (s.wakeTime) $("wakeTime").value = s.wakeTime;
+        $("schedEnabled").checked = !!s.enabled; if (s.sleepTime) $("sleepTime").value = s.sleepTime; if (s.wakeTime) $("wakeTime").value = s.wakeTime;
         const a = state.autoSwitch || {};
-        $("autoEnabled").checked = !!a.enabled;
-        if (a.dayStart) $("dayStart").value = a.dayStart;
-        if (a.nightStart) $("nightStart").value = a.nightStart;
+        $("autoEnabled").checked = !!a.enabled; if (a.dayStart) $("dayStart").value = a.dayStart; if (a.nightStart) $("nightStart").value = a.nightStart;
         $("autostartChk").checked = state.autostart !== false;
         $("maintChk").checked = !!state.maintenance;
         if (state.paths && state.paths.media) $("mediaPath").textContent = state.paths.media;
@@ -426,64 +425,46 @@
 
       function renderAll() { renderLive(); renderScenes(); renderMedia(); renderMore(); }
 
-      // ---- playlist editor ----
       function openPlaylist(scene, slot) {
-        const src = (state.scenes[scene][slot] || []).map((e) => ({ videoId: e.videoId, repeat: e.repeat || 1 }));
-        plEdit = { scene, slot, list: src };
-        $("plTitle").textContent = "Playlist – " + posName[slot] + " (" + sceneName[scene] + ")";
-        renderPlEditor();
-        $("plModal").classList.add("open");
+        plEdit = { scene, slot, list: (state.scenes[scene][slot] || []).map((e) => ({ videoId: e.videoId, repeat: e.repeat || 1 })) };
+        $("plTitle").textContent = "Playlist · " + posName[slot] + " · " + sceneName[scene];
+        renderPlEditor(); $("plModal").classList.add("open");
       }
       function renderPlEditor() {
         const wrap = $("plList"); wrap.innerHTML = "";
-        if (!plEdit.list.length) { wrap.innerHTML = `<div class="empty-note">Noch leer. Unten ein Video hinzufügen.</div>`; }
+        if (!plEdit.list.length) wrap.innerHTML = `<div class="empty-note">Noch leer. Unten ein Video hinzufügen.</div>`;
         plEdit.list.forEach((entry, i) => {
           const v = videoById(entry.videoId);
-          const row = document.createElement("div");
-          row.className = "pl-entry";
-          row.innerHTML =
-            `<div class="pl-move"><button data-a="up">▲</button><button data-a="down">▼</button></div>` +
-            `<div class="thumb"></div>` +
-            `<div class="nm">${escapeHtml(v ? v.name : "(gelöscht)")}</div>` +
-            `<div class="stepper"><button data-a="minus">−</button>` +
-            `<div class="val"><b>×${entry.repeat}</b><br>Wdh.</div>` +
-            `<button data-a="plus">+</button></div>` +
-            `<button class="btn danger sm" data-a="del">✕</button>`;
-          applyThumb(row.querySelector(".thumb"), entry.videoId, "🎬");
-          row.querySelectorAll("button").forEach((b) => {
-            b.onclick = () => {
-              const a = b.dataset.a;
-              if (a === "plus") entry.repeat = Math.min(999, entry.repeat + 1);
-              else if (a === "minus") entry.repeat = Math.max(1, entry.repeat - 1);
-              else if (a === "del") plEdit.list.splice(i, 1);
-              else if (a === "up" && i > 0) { [plEdit.list[i - 1], plEdit.list[i]] = [plEdit.list[i], plEdit.list[i - 1]]; }
-              else if (a === "down" && i < plEdit.list.length - 1) { [plEdit.list[i + 1], plEdit.list[i]] = [plEdit.list[i], plEdit.list[i + 1]]; }
-              savePlaylist(); renderPlEditor();
-            };
+          const row = document.createElement("div"); row.className = "pl-entry";
+          row.innerHTML = `<div class="pl-move"><button data-a="up">${ICON.up}</button><button data-a="down">${ICON.down}</button></div>` +
+            `<div class="thumb"></div><div class="nm">${escapeHtml(v ? v.name : "(gelöscht)")}</div>` +
+            `<div class="stepper"><button data-a="minus">${ICON.minus}</button><div class="val"><b>${entry.repeat}×</b>Wdh.</div><button data-a="plus">${ICON.plus}</button></div>` +
+            `<button class="icon-btn" data-a="del">${ICON.trash}</button>`;
+          applyThumb(row.querySelector(".thumb"), entry.videoId);
+          row.querySelectorAll("button").forEach((b) => b.onclick = () => {
+            const a = b.dataset.a;
+            if (a === "plus") entry.repeat = Math.min(999, entry.repeat + 1);
+            else if (a === "minus") entry.repeat = Math.max(1, entry.repeat - 1);
+            else if (a === "del") plEdit.list.splice(i, 1);
+            else if (a === "up" && i > 0) [plEdit.list[i - 1], plEdit.list[i]] = [plEdit.list[i], plEdit.list[i - 1]];
+            else if (a === "down" && i < plEdit.list.length - 1) [plEdit.list[i + 1], plEdit.list[i]] = [plEdit.list[i], plEdit.list[i + 1]];
+            savePlaylist(); renderPlEditor();
           });
           wrap.appendChild(row);
         });
       }
-      async function savePlaylist() {
-        if (!plEdit) return;
-        await api("/api/scene/playlist", { scene: plEdit.scene, slot: plEdit.slot, playlist: plEdit.list });
-      }
-      $("plAdd").addEventListener("click", () => {
-        openPicker("Video hinzufügen", (videoId) => { plEdit.list.push({ videoId, repeat: 1 }); savePlaylist(); renderPlEditor(); });
-      });
+      async function savePlaylist() { if (plEdit) await api("/api/scene/playlist", { scene: plEdit.scene, slot: plEdit.slot, playlist: plEdit.list }); }
+      $("plAdd").addEventListener("click", () => openPicker("Hinzufügen", (videoId) => { plEdit.list.push({ videoId, repeat: 1 }); savePlaylist(); renderPlEditor(); }));
       $("plClose").addEventListener("click", () => { $("plModal").classList.remove("open"); plEdit = null; toast("Playlist gespeichert"); });
 
-      // ---- picker ----
       function openPicker(title, cb) {
-        pickCb = cb;
-        $("pickerTitle").textContent = title;
+        pickCb = cb; $("pickerTitle").textContent = title;
         const grid = $("pickerGrid"); grid.innerHTML = "";
-        if (!state.videos.length) grid.innerHTML = `<div class="empty-note" style="grid-column:1/-1">Erst ein Video in „Medien“ hochladen.</div>`;
+        if (!state.videos.length) grid.innerHTML = `<div class="empty-note" style="grid-column:1/-1">Erst ein Video in Medien hochladen.</div>`;
         for (const v of state.videos) {
-          const el = document.createElement("div");
-          el.className = "pick";
+          const el = document.createElement("div"); el.className = "pick";
           el.innerHTML = `<div class="thumb"></div><div class="nm2">${escapeHtml(v.name)}</div>`;
-          applyThumb(el.querySelector(".thumb"), v.id, "🎬");
+          applyThumb(el.querySelector(".thumb"), v.id);
           el.onclick = () => { $("picker").classList.remove("open"); if (pickCb) pickCb(v.id); };
           grid.appendChild(el);
         }
@@ -491,10 +472,9 @@
       }
       $("pickerClose").addEventListener("click", () => $("picker").classList.remove("open"));
 
-      // ---- API ----
       async function api(p, b) { const r = await fetch(p, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) }); return r.json().catch(() => ({})); }
       async function loadState() { state = await fetch("/api/state").then((r) => r.json()); renderAll(); loadDisplays(); loadAccess(); }
-      async function setLive(scene) { await api("/api/scene/live", { scene }); toast("Live: " + sceneName[scene]); }
+      async function setLive(scene) { await api("/api/scene/live", { scene }); toast("Live · " + sceneName[scene]); }
       async function renameVideo(id, name) { await api("/api/video/rename", { id, name }); toast("Umbenannt"); }
       async function deleteVideo(id, name) { if (!confirm('Video "' + name + '" löschen?')) return; await api("/api/video/delete", { id }); toast("Gelöscht"); }
 
@@ -514,34 +494,30 @@
         } catch (_) {}
       }
 
-      // ---- nav ----
       $("nav").addEventListener("click", (e) => {
         const b = e.target.closest("button"); if (!b) return;
         document.querySelectorAll(".bottom-nav button").forEach((x) => x.classList.toggle("active", x === b));
         document.querySelectorAll(".tab-page").forEach((p) => p.classList.toggle("active", p.id === "page-" + b.dataset.tab));
         window.scrollTo(0, 0);
       });
-
-      // ---- events ----
       $("liveSwitch").addEventListener("click", (e) => { const b = e.target.closest(".seg-btn"); if (b) setLive(b.dataset.scene); });
       $("sceneTabs").addEventListener("click", (e) => { const t = e.target.closest(".tab"); if (t) { editScene = t.dataset.scene; renderScenes(); } });
 
-      $("saveAuto").addEventListener("click", async () => { await api("/api/autoswitch", { enabled: $("autoEnabled").checked, dayStart: $("dayStart").value, nightStart: $("nightStart").value }); toast("Automatik gespeichert"); });
+      $("saveAuto").addEventListener("click", async () => { await api("/api/autoswitch", { enabled: $("autoEnabled").checked, dayStart: $("dayStart").value, nightStart: $("nightStart").value }); toast("Gespeichert"); });
       $("saveSched").addEventListener("click", async () => {
         const body = { enabled: $("schedEnabled").checked, sleepTime: $("sleepTime").value, wakeTime: $("wakeTime").value };
         const res = await api("/api/schedule", body);
         if (res.applyResult && res.applyResult.error) { $("schedNote").textContent = "Hinweis: " + (res.applyResult.hint || res.applyResult.error); toast("Gespeichert (nicht angewandt)", true); }
-        else if (res.applyResult && res.applyResult.skipped) { $("schedNote").textContent = "Gespeichert (greift nur auf dem Windows-PC)."; toast("Zeitplan gespeichert"); }
-        else { $("schedNote").textContent = "Aktiv: schlafen " + body.sleepTime + ", aufwachen " + body.wakeTime + "."; toast("Zeitplan gespeichert"); }
+        else if (res.applyResult && res.applyResult.skipped) { $("schedNote").textContent = "Gespeichert (greift nur auf dem Windows-PC)."; toast("Gespeichert"); }
+        else { $("schedNote").textContent = "Aktiv: schlafen " + body.sleepTime + ", aufwachen " + body.wakeTime + "."; toast("Gespeichert"); }
       });
-      $("saveMapping").addEventListener("click", async () => { const m = {}; for (const slot of slots) { const v = $("map-" + slot).value; m[slot] = v === "" ? null : Number(v); } await api("/api/displays", m); toast("Zuordnung gespeichert"); });
+      $("saveMapping").addEventListener("click", async () => { const m = {}; for (const slot of slots) { const v = $("map-" + slot).value; m[slot] = v === "" ? null : Number(v); } await api("/api/displays", m); toast("Gespeichert"); });
       $("autostartChk").addEventListener("change", async (e) => { await api("/api/autostart", { enabled: e.target.checked }); toast(e.target.checked ? "Autostart an" : "Autostart aus"); });
       $("maintChk").addEventListener("change", async (e) => { await api("/api/maintenance", { enabled: e.target.checked }); toast(e.target.checked ? "Wartungsmodus an" : "Wartungsmodus aus"); });
-      $("openFolderBtn").addEventListener("click", async () => { await api("/api/open-folder", {}); toast("Ordner wird am PC geöffnet"); });
+      $("openFolderBtn").addEventListener("click", async () => { await api("/api/open-folder", {}); toast("Ordner wird geöffnet"); });
       $("restartBtn").addEventListener("click", async () => { await api("/api/power", { action: "restart-players" }); toast("Player werden neu gestartet"); });
       $("sleepBtn").addEventListener("click", async () => { if (confirm("PC jetzt in den Schlaf schicken?")) await api("/api/power", { action: "sleep" }); });
 
-      // ---- upload ----
       const dz = $("dropzone");
       dz.addEventListener("click", () => $("fileInput").click());
       $("fileInput").addEventListener("change", (e) => { if (e.target.files[0]) uploadFile(e.target.files[0]); });
@@ -558,16 +534,18 @@
         xhr.send(fd);
       }
 
-      // ---- live updates ----
       function connectWs() {
         const ws = new WebSocket("ws://" + location.host);
-        ws.onmessage = (ev) => {
-          let msg; try { msg = JSON.parse(ev.data); } catch (_) { return; }
+        ws.onmessage = (ev) => { let msg; try { msg = JSON.parse(ev.data); } catch (_) { return; }
           if (msg.type === "state") { state = msg.state; renderAll(); }
           else if (msg.type === "status") { playerStatus = msg.players || playerStatus; nowPlaying = msg.playing || nowPlaying; renderLive(); }
         };
         ws.onclose = () => setTimeout(connectWs, 2000);
       }
+
+      // Show the brand logo if one exists, otherwise the placeholder mark.
+      $("brandLogo").addEventListener("load", () => { $("brandLogo").style.display = "block"; $("brandMark").style.display = "none"; });
+      $("brandLogo").addEventListener("error", () => { $("brandLogo").style.display = "none"; });
 
       loadState();
       connectWs();

@@ -12,16 +12,21 @@
       video.idle { opacity: 0; z-index: 1; }
       #placeholder {
         position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-        color: #3a3a3a; z-index: 0; font-family: system-ui, sans-serif; font-size: 3vh;
+        z-index: 0; background: #000;
       }
+      #logo { max-width: 42vw; max-height: 42vh; object-fit: contain; }
     </style>
   </head>
   <body>
     <div id="stage">
-      <div id="placeholder">Kein Video zugewiesen</div>
+      <div id="placeholder"><img id="logo" src="/assets/logo.png" alt="" /></div>
       <video id="vidA" class="active" muted playsinline></video>
       <video id="vidB" class="idle" muted playsinline></video>
     </div>
+    <script>
+      // Hide the logo gracefully if none has been added yet (assets/logo.png).
+      document.getElementById("logo").addEventListener("error", function () { this.style.display = "none"; });
+    </script>
     <script>
       const slot = new URLSearchParams(location.search).get("screen") || "left";
       const placeholder = document.getElementById("placeholder");

@@ -17,6 +17,7 @@ const { Store } = require("../server/store");
 const { startServer } = require("../server");
 const { applySchedule, runPowerAction } = require("./power");
 const { ensureFirewallRule } = require("./firewall");
+const { setupAutoUpdate } = require("./updater");
 
 const PORT = 8787;
 const SLOTS = ["left", "middle", "right"];
@@ -260,6 +261,7 @@ app.whenReady().then(async () => {
 
   createAllPlayers();
   buildTray();
+  setupAutoUpdate();
 
   globalShortcut.register("CommandOrControl+Shift+D", openDashboardWindow);
   globalShortcut.register("CommandOrControl+Shift+Q", () => {

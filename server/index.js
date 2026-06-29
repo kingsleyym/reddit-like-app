@@ -22,6 +22,7 @@ function startServer(opts) {
     onMaintenance,
     onAutostart,
     onOpenFolder,
+    version = "",
   } = opts;
 
   fs.mkdirSync(mediaDir, { recursive: true });
@@ -35,8 +36,13 @@ function startServer(opts) {
   app.use("/static", express.static(rendererDir));
   app.use("/assets", express.static(path.join(__dirname, "..", "assets")));
 
-  app.get("/player", (req, res) => res.sendFile(path.join(rendererDir, "player.html")));
-  app.get(["/", "/dashboard"], (req, res) => res.sendFile(path.join(rendererDir, "dashboard.html")));
+  // Never cache the UI pages, so a freshly updated app always shows the new
+  // dashboard/player instead of a stale cached version in the browser.
+  function noCache(res) {
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+  }
+  app.get("/player", (req, res) => { noCache(res); res.sendFile(path.join(rendererDir, "player.html")); });
+  app.get(["/", "/dashboard"], (req, res) => { noCache(res); res.sendFile(path.join(rendererDir, "dashboard.html")); });
 
   // --- Upload --------------------------------------------------------------
   const storage = multer.diskStorage({
@@ -273,6 +279,7 @@ function startServer(opts) {
       autostart: s.autostart,
       maintenance: s.maintenance,
       paths: { media: mediaDir, config: store.dataFile },
+      version: version,
       live: livePlaylists(),
     };
   }

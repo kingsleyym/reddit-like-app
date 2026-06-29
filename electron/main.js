@@ -257,6 +257,7 @@ app.whenReady().then(async () => {
       } catch (_) {}
     },
     onOpenFolder: () => mediaDir && shell.openPath(mediaDir),
+    version: app.getVersion(),
   });
 
   createAllPlayers();

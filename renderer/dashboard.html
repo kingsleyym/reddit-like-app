@@ -275,6 +275,7 @@
         <button class="btn ghost block" id="restartBtn" style="margin-bottom:8px">Player neu starten</button>
         <button class="btn ghost block" id="sleepBtn" style="margin-bottom:16px">PC jetzt schlafen legen</button>
         <div class="sub"><h3>Speicherort der Videos</h3><div class="path" id="mediaPath">…</div></div>
+        <div class="sub"><h3>Version</h3><div class="path" id="appVersion">–</div></div>
       </div>
     </div>
 
@@ -421,6 +422,7 @@
         $("autostartChk").checked = state.autostart !== false;
         $("maintChk").checked = !!state.maintenance;
         if (state.paths && state.paths.media) $("mediaPath").textContent = state.paths.media;
+        $("appVersion").textContent = state.version ? "MenuBoard " + state.version : "MenuBoard";
       }
 
       function renderAll() { renderLive(); renderScenes(); renderMedia(); renderMore(); }

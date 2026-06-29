@@ -5,7 +5,7 @@
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win --x64",
+    "dist": "electron-builder --win --x64 --publish never",
     "lint": "node --check electron/main.js && node --check server/index.js && node --check server/store.js"
   },
   "author": "",
@@ -27,7 +27,8 @@
       {
         "provider": "github",
         "owner": "kingsleyym",
-        "repo": "reddit-like-app"
+        "repo": "reddit-like-app",
+        "releaseType": "release"
       }
     ],
     "files": [

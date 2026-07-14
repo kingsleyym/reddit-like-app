@@ -485,8 +485,8 @@
           const { displays } = await fetch("/api/displays").then((r) => r.json());
           const mapping = (state && state.displayMapping) || {};
           for (const slot of slots) {
-            const sel = $("map-" + slot); sel.innerHTML = `<option value="">Automatisch</option>`;
-            for (const d of displays) { const o = document.createElement("option"); o.value = String(d.id); o.textContent = d.label + (d.primary ? " (Haupt)" : ""); if (mapping[slot] != null && String(mapping[slot]) === String(d.id)) o.selected = true; sel.appendChild(o); }
+            const sel = $("map-" + slot); sel.innerHTML = `<option value="">Automatisch (nach Anschluss)</option>`;
+            for (const d of displays) { const key = d.key || String(d.id); const o = document.createElement("option"); o.value = key; o.textContent = d.label + (d.primary ? " · Haupt" : ""); if (mapping[slot] != null && String(mapping[slot]) === String(key)) o.selected = true; sel.appendChild(o); }
           }
         } catch (_) {}
       }
@@ -513,7 +513,7 @@
         else if (res.applyResult && res.applyResult.skipped) { $("schedNote").textContent = "Gespeichert (greift nur auf dem Windows-PC)."; toast("Gespeichert"); }
         else { $("schedNote").textContent = "Aktiv: schlafen " + body.sleepTime + ", aufwachen " + body.wakeTime + "."; toast("Gespeichert"); }
       });
-      $("saveMapping").addEventListener("click", async () => { const m = {}; for (const slot of slots) { const v = $("map-" + slot).value; m[slot] = v === "" ? null : Number(v); } await api("/api/displays", m); toast("Gespeichert"); });
+      $("saveMapping").addEventListener("click", async () => { const m = {}; for (const slot of slots) { const v = $("map-" + slot).value; m[slot] = v === "" ? null : v; } await api("/api/displays", m); toast("Gespeichert – Player starten neu"); });
       $("autostartChk").addEventListener("change", async (e) => { await api("/api/autostart", { enabled: e.target.checked }); toast(e.target.checked ? "Autostart an" : "Autostart aus"); });
       $("maintChk").addEventListener("change", async (e) => { await api("/api/maintenance", { enabled: e.target.checked }); toast(e.target.checked ? "Wartungsmodus an" : "Wartungsmodus aus"); });
       $("openFolderBtn").addEventListener("click", async () => { await api("/api/open-folder", {}); toast("Ordner wird geöffnet"); });

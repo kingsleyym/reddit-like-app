@@ -18,6 +18,7 @@ const { startServer } = require("../server");
 const { applySchedule, runPowerAction } = require("./power");
 const { ensureFirewallRule } = require("./firewall");
 const { setupAutoUpdate } = require("./updater");
+const { listWindowsOutputs, matchDevices } = require("./displays");
 
 const PORT = 8787;
 const SLOTS = ["left", "middle", "right"];
@@ -30,6 +31,27 @@ let quitting = false;
 let maintenance = false; // when true, players are closed and do not auto-reopen
 let mediaDir = null;
 let serverInfo = null;
+let winOutputs = []; // physical display outputs (Windows), refreshed on changes
+
+async function refreshOutputs() {
+  try {
+    winOutputs = await listWindowsOutputs();
+  } catch (_) {
+    winOutputs = [];
+  }
+}
+
+// Displays ordered stably by physical output (\\.\DISPLAYn), which stays put
+// across reboots. Falls back to left-to-right X position when outputs are
+// unknown (non-Windows, or detection failed) — never worse than before.
+function orderedMatched() {
+  const matched = matchDevices(screen.getAllDisplays(), winOutputs);
+  const haveAll = matched.length > 0 && matched.every((m) => m.device);
+  return [...matched].sort((a, b) => {
+    if (haveAll) return a.device < b.device ? -1 : a.device > b.device ? 1 : 0;
+    return a.display.bounds.x - b.display.bounds.x;
+  });
+}
 
 function userDataPaths() {
   const base = app.getPath("userData");
@@ -40,15 +62,23 @@ function userDataPaths() {
 }
 
 function resolveDisplaysForSlots() {
-  const displays = screen.getAllDisplays();
-  const sorted = [...displays].sort((a, b) => a.bounds.x - b.bounds.x);
+  const matched = matchDevices(screen.getAllDisplays(), winOutputs);
+  const ordered = orderedMatched();
   const mapping = store.getState().displayMapping || {};
   const result = {};
   SLOTS.forEach((slot, index) => {
-    let display = null;
-    if (mapping[slot] != null) display = displays.find((d) => d.id === mapping[slot]) || null;
-    if (!display) display = sorted[index] || null;
-    result[slot] = display;
+    let disp = null;
+    const wanted = mapping[slot];
+    if (wanted != null && wanted !== "") {
+      // A saved override can be a physical output name (stable) or an old
+      // display id; accept either.
+      const hit = matched.find(
+        (m) => (m.device && m.device === wanted) || String(m.display.id) === String(wanted)
+      );
+      if (hit) disp = hit.display;
+    }
+    if (!disp) disp = ordered[index] ? ordered[index].display : null;
+    result[slot] = disp;
   });
   return result;
 }
@@ -140,14 +170,18 @@ function openDashboardWindow() {
 }
 
 function listDisplays() {
-  const sorted = [...screen.getAllDisplays()].sort((a, b) => a.bounds.x - b.bounds.x);
+  const ordered = orderedMatched();
   const primaryId = screen.getPrimaryDisplay().id;
-  return sorted.map((d, i) => ({
-    id: d.id,
-    label: `Monitor ${i + 1} (${d.bounds.width}x${d.bounds.height})`,
-    bounds: d.bounds,
-    primary: d.id === primaryId,
-  }));
+  return ordered.map((m, i) => {
+    const dev = m.device ? m.device.split("\\").pop() : null; // "DISPLAY1"
+    return {
+      id: m.display.id,
+      device: m.device || null,
+      key: m.device || String(m.display.id),
+      label: `Anschluss ${i + 1}` + (dev ? ` (${dev})` : "") + ` · ${m.display.bounds.width}x${m.display.bounds.height}`,
+      primary: m.display.id === primaryId,
+    };
+  });
 }
 
 // --- Automatic Tag/Abend switching by time of day -------------------------
@@ -260,6 +294,7 @@ app.whenReady().then(async () => {
     version: app.getVersion(),
   });
 
+  await refreshOutputs();
   createAllPlayers();
   buildTray();
   setupAutoUpdate();
@@ -278,9 +313,12 @@ app.whenReady().then(async () => {
   checkAutoSwitch();
   setInterval(checkAutoSwitch, 30 * 1000);
 
-  screen.on("display-added", recreateAllPlayers);
-  screen.on("display-removed", recreateAllPlayers);
-  screen.on("display-metrics-changed", recreateAllPlayers);
+  // A monitor being power-cycled re-triggers detection; re-read the physical
+  // outputs first, then rebuild the windows on the correct ports.
+  const onDisplayChange = () => refreshOutputs().then(recreateAllPlayers);
+  screen.on("display-added", onDisplayChange);
+  screen.on("display-removed", onDisplayChange);
+  screen.on("display-metrics-changed", onDisplayChange);
 });
 
 app.on("before-quit", () => {

@@ -23,6 +23,8 @@ function startServer(opts) {
     onAutostart,
     onOpenFolder,
     onScreens,
+    rendererDir: rendererDirOpt,
+    assetsDir: assetsDirOpt,
     version = "",
   } = opts;
 
@@ -33,11 +35,14 @@ function startServer(opts) {
   const app = express();
   app.use(express.json());
 
-  const rendererDir = path.join(__dirname, "..", "renderer");
+  // Where the UI files live. Overridable so a single-exe build can serve them
+  // from a real (materialized) folder instead of the packed snapshot.
+  const rendererDir = rendererDirOpt || path.join(__dirname, "..", "renderer");
+  const assetsDir = assetsDirOpt || path.join(__dirname, "..", "assets");
 
   app.use("/media", express.static(mediaDir));
   app.use("/static", express.static(rendererDir));
-  app.use("/assets", express.static(path.join(__dirname, "..", "assets")));
+  app.use("/assets", express.static(assetsDir));
 
   // Never cache the UI pages, so a freshly updated app always shows the new
   // dashboard/player instead of a stale cached version in the browser.

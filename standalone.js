@@ -11,6 +11,7 @@
 
 const path = require("path");
 const os = require("os");
+const fs = require("fs");
 const { Store } = require("./server/store");
 const { startServer } = require("./server");
 const { ensureFirewallRule } = require("./electron/firewall");
@@ -25,6 +26,26 @@ function dataDir() {
   return path.join(os.homedir(), ".menuboard");
 }
 
+// When packed into a single .exe (pkg), the UI files live inside a read-only
+// snapshot. express.static/sendFile need a real folder, so copy them out once.
+function materializeWeb(destBase) {
+  const rDest = path.join(destBase, "web", "renderer");
+  const aDest = path.join(destBase, "web", "assets");
+  fs.mkdirSync(rDest, { recursive: true });
+  fs.mkdirSync(aDest, { recursive: true });
+  for (const f of ["player.html", "dashboard.html"]) {
+    fs.writeFileSync(path.join(rDest, f), fs.readFileSync(path.join(__dirname, "renderer", f)));
+  }
+  try {
+    for (const f of fs.readdirSync(path.join(__dirname, "assets"))) {
+      try {
+        fs.writeFileSync(path.join(aDest, f), fs.readFileSync(path.join(__dirname, "assets", f)));
+      } catch (_) {}
+    }
+  } catch (_) {}
+  return { rendererDir: rDest, assetsDir: aDest };
+}
+
 let version = "server";
 try {
   version = require("./package.json").version;
@@ -37,12 +58,17 @@ async function main() {
   // Open the Windows firewall so the displays/phone can reach this server.
   await ensureFirewallRule(PORT).catch(() => {});
 
+  // Single-exe build serves the UI from a real folder; plain node uses defaults.
+  const web = process.pkg ? materializeWeb(dir) : {};
+
   const info = await startServer({
     store,
     mediaDir: path.join(dir, "media"),
     port: PORT,
     version,
     getDisplays: () => [], // no local monitors in server mode
+    rendererDir: web.rendererDir,
+    assetsDir: web.assetsDir,
   });
 
   const nets = os.networkInterfaces();

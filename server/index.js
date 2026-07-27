@@ -22,8 +22,11 @@ function startServer(opts) {
     onMaintenance,
     onAutostart,
     onOpenFolder,
+    onScreens,
     version = "",
   } = opts;
+
+  const screenIds = () => store.getState().screens;
 
   fs.mkdirSync(mediaDir, { recursive: true });
 
@@ -96,6 +99,20 @@ function startServer(opts) {
     broadcastState();
     broadcastLive();
     res.json({ ok: true, liveScene: store.getState().liveScene });
+  });
+
+  // --- Configure the list of screens (e.g. 4 for the Samsung setup) --------
+  app.post("/api/screens", (req, res) => {
+    const ids = (req.body && req.body.screens) || [];
+    const screens = store.setScreens(ids);
+    if (onScreens) {
+      try {
+        onScreens(screens);
+      } catch (_) {}
+    }
+    broadcastState();
+    broadcastLive();
+    res.json({ ok: true, screens });
   });
 
   // --- Automatic day/night switching by time ------------------------------
@@ -190,8 +207,8 @@ function startServer(opts) {
   const server = http.createServer(app);
   const wss = new WebSocketServer({ server });
 
-  // Which video each slot is currently showing (reported by the players).
-  const nowPlaying = { left: null, middle: null, right: null };
+  // Which video each screen is currently showing (reported by the players).
+  const nowPlaying = {};
 
   wss.on("connection", (ws) => {
     ws.on("message", (raw) => {
@@ -206,13 +223,13 @@ function startServer(opts) {
         ws.role = msg.role;
         ws.slot = msg.slot;
         broadcastStatus();
-      } else if (msg.type === "playing" && msg.slot in nowPlaying) {
+      } else if (msg.type === "playing" && screenIds().indexOf(msg.slot) !== -1) {
         nowPlaying[msg.slot] = msg.videoId || null;
         broadcastStatus();
       }
     });
     ws.on("close", () => {
-      if (ws.role === "player" && ws.slot in nowPlaying) nowPlaying[ws.slot] = null;
+      if (ws.role === "player" && ws.slot) nowPlaying[ws.slot] = null;
       broadcastStatus();
     });
     ws.send(JSON.stringify({ type: "state", state: publicState() }));
@@ -235,7 +252,8 @@ function startServer(opts) {
   }
 
   function connectedStatus() {
-    const players = { left: false, middle: false, right: false };
+    const players = {};
+    for (const id of screenIds()) players[id] = false;
     for (const c of wss.clients) {
       if (c.readyState === 1 && c.role === "player" && c.slot in players) players[c.slot] = true;
     }
@@ -259,18 +277,18 @@ function startServer(opts) {
   }
 
   function livePlaylists() {
-    const sc = store.getState().scenes[store.getState().liveScene];
-    return {
-      left: resolvePlaylist(sc.left),
-      middle: resolvePlaylist(sc.middle),
-      right: resolvePlaylist(sc.right),
-    };
+    const s = store.getState();
+    const sc = s.scenes[s.liveScene];
+    const out = {};
+    for (const id of s.screens) out[id] = resolvePlaylist(sc[id]);
+    return out;
   }
 
   function publicState() {
     const s = store.getState();
     return {
       videos: s.videos,
+      screens: s.screens,
       scenes: s.scenes,
       liveScene: s.liveScene,
       autoSwitch: s.autoSwitch,

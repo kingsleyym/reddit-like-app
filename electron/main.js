@@ -21,7 +21,12 @@ const { setupAutoUpdate } = require("./updater");
 const { listWindowsOutputs, matchDevices } = require("./displays");
 
 const PORT = 8787;
-const SLOTS = ["left", "middle", "right"];
+const DEFAULT_SLOTS = ["left", "middle", "right"];
+// Current screen ids come from the store (configurable count); fall back to the
+// classic three until the store is ready.
+function SLOTS() {
+  return store && store.getState().screens ? store.getState().screens : DEFAULT_SLOTS;
+}
 
 let store;
 let playerWindows = {};
@@ -66,7 +71,7 @@ function resolveDisplaysForSlots() {
   const ordered = orderedMatched();
   const mapping = store.getState().displayMapping || {};
   const result = {};
-  SLOTS.forEach((slot, index) => {
+  SLOTS().forEach((slot, index) => {
     let disp = null;
     const wanted = mapping[slot];
     if (wanted != null && wanted !== "") {
@@ -118,11 +123,11 @@ function createPlayerWindow(slot, display) {
 function createAllPlayers() {
   if (maintenance) return;
   const displays = resolveDisplaysForSlots();
-  for (const slot of SLOTS) if (!playerWindows[slot]) createPlayerWindow(slot, displays[slot]);
+  for (const slot of SLOTS()) if (!playerWindows[slot]) createPlayerWindow(slot, displays[slot]);
 }
 
 function closeAllPlayers() {
-  for (const slot of SLOTS) {
+  for (const slot of Object.keys(playerWindows)) {
     const win = playerWindows[slot];
     if (win && !win.isDestroyed()) {
       win.removeAllListeners("closed");
@@ -142,7 +147,7 @@ function applyMaintenance(enabled) {
 }
 
 function recreateAllPlayers() {
-  for (const slot of SLOTS) {
+  for (const slot of Object.keys(playerWindows)) {
     const win = playerWindows[slot];
     if (win && !win.isDestroyed()) {
       win.removeAllListeners("closed");
@@ -291,6 +296,7 @@ app.whenReady().then(async () => {
       } catch (_) {}
     },
     onOpenFolder: () => mediaDir && shell.openPath(mediaDir),
+    onScreens: () => recreateAllPlayers(),
     version: app.getVersion(),
   });
 

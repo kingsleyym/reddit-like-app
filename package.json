@@ -5,6 +5,7 @@
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
+    "server": "node standalone.js",
     "dist": "electron-builder --win --x64 --publish never",
     "lint": "node --check electron/main.js && node --check server/index.js && node --check server/store.js"
   },

@@ -259,10 +259,17 @@
       </div>
 
       <div class="card">
-        <h2>Monitor-Zuordnung</h2>
-        <div class="map-row"><span>Links</span><select id="map-left"></select></div>
-        <div class="map-row"><span>Mitte</span><select id="map-middle"></select></div>
-        <div class="map-row"><span>Rechts</span><select id="map-right"></select></div>
+        <h2>Bildschirme</h2>
+        <div class="time-row" style="align-items:flex-end">
+          <div class="field"><label>Anzahl Bildschirme</label><input type="number" id="screenCount" min="1" max="8" value="3" /></div>
+          <button class="btn primary" id="saveScreens" style="flex:0 0 auto">Übernehmen</button>
+        </div>
+        <p class="hint">Für den Samsung-/Web-Aufbau auf 4 stellen. Achtung: Ändern der Anzahl setzt die Playlists zurück.</p>
+      </div>
+
+      <div class="card">
+        <h2>Monitor-Zuordnung (nur bei HDMI-Anschluss)</h2>
+        <div id="mapRows"></div>
         <button class="btn primary block" id="saveMapping" style="margin-top:8px">Anwenden</button>
       </div>
 
@@ -310,8 +317,13 @@
 
     <script>
       const $ = (id) => document.getElementById(id);
-      const slots = ["left", "middle", "right"];
-      const posName = { left: "Links", middle: "Mitte", right: "Rechts" };
+      function screenList() { return (state && state.screens && state.screens.length) ? state.screens : ["left", "middle", "right"]; }
+      function posName(id) {
+        const m = { left: "Links", middle: "Mitte", right: "Rechts" };
+        if (m[id]) return m[id];
+        if (/^\d+$/.test(id)) return "Bildschirm " + id;
+        return id;
+      }
       const sceneName = { day: "Tag", night: "Abend" };
       const ICON = {
         up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14l6-6 6 6"/></svg>',
@@ -364,12 +376,12 @@
         document.querySelectorAll("#liveSwitch .seg-btn").forEach((b) => b.classList.toggle("active", b.dataset.scene === state.liveScene));
         const row = $("liveScreens"); row.innerHTML = "";
         const liveSlots = state.scenes[state.liveScene];
-        for (const slot of slots) {
+        for (const slot of screenList()) {
           const list = liveSlots[slot] || [];
           const playingV = videoById(nowPlaying[slot]);
           const now = playerStatus[slot] ? (playingV ? playingV.name : (list.length ? "startet …" : "kein Video")) : "offline";
           const el = document.createElement("div"); el.className = "live-screen";
-          el.innerHTML = `<div class="pos"><span class="dot ${playerStatus[slot] ? "on" : ""}"></span>${posName[slot]}</div>` +
+          el.innerHTML = `<div class="pos"><span class="dot ${playerStatus[slot] ? "on" : ""}"></span>${posName(slot)}</div>` +
             `<div class="info"><div class="now">${escapeHtml(now)}</div><div class="sub">${list.length ? "Playlist · " + list.length + " Video(s)" : "leer"}</div></div>`;
           row.appendChild(el);
         }
@@ -380,11 +392,11 @@
         document.querySelectorAll("#sceneTabs .tab").forEach((t) => t.classList.toggle("active", t.dataset.scene === editScene));
         const wrap = $("slotCards"); wrap.innerHTML = "";
         const sc = state.scenes[editScene];
-        for (const slot of slots) {
+        for (const slot of screenList()) {
           const list = sc[slot] || [];
           const summary = playlistSummary(list);
           const card = document.createElement("div"); card.className = "slot-card";
-          card.innerHTML = `<div class="thumb"></div><div class="body"><div class="pos">${posName[slot]}</div>` +
+          card.innerHTML = `<div class="thumb"></div><div class="body"><div class="pos">${posName(slot)}</div>` +
             `<div class="summary ${summary ? "" : "empty"}">${summary ? escapeHtml(summary) : "leer"}</div></div>` +
             `<button class="btn primary sm">Bearbeiten</button>`;
           if (list.length) applyThumb(card.querySelector(".thumb"), list[0].videoId);
@@ -423,13 +435,14 @@
         $("maintChk").checked = !!state.maintenance;
         if (state.paths && state.paths.media) $("mediaPath").textContent = state.paths.media;
         $("appVersion").textContent = state.version ? "MenuBoard " + state.version : "MenuBoard";
+        if (document.activeElement !== $("screenCount")) $("screenCount").value = screenList().length;
       }
 
       function renderAll() { renderLive(); renderScenes(); renderMedia(); renderMore(); }
 
       function openPlaylist(scene, slot) {
         plEdit = { scene, slot, list: (state.scenes[scene][slot] || []).map((e) => ({ videoId: e.videoId, repeat: e.repeat || 1 })) };
-        $("plTitle").textContent = "Playlist · " + posName[slot] + " · " + sceneName[scene];
+        $("plTitle").textContent = "Playlist · " + posName(slot) + " · " + sceneName[scene];
         renderPlEditor(); $("plModal").classList.add("open");
       }
       function renderPlEditor() {
@@ -484,9 +497,14 @@
         try {
           const { displays } = await fetch("/api/displays").then((r) => r.json());
           const mapping = (state && state.displayMapping) || {};
-          for (const slot of slots) {
-            const sel = $("map-" + slot); sel.innerHTML = `<option value="">Automatisch (nach Anschluss)</option>`;
+          const wrap = $("mapRows"); wrap.innerHTML = "";
+          for (const slot of screenList()) {
+            const row = document.createElement("div"); row.className = "map-row";
+            const span = document.createElement("span"); span.textContent = posName(slot);
+            const sel = document.createElement("select"); sel.dataset.slot = slot;
+            sel.innerHTML = `<option value="">Automatisch (nach Anschluss)</option>`;
             for (const d of displays) { const key = d.key || String(d.id); const o = document.createElement("option"); o.value = key; o.textContent = d.label + (d.primary ? " · Haupt" : ""); if (mapping[slot] != null && String(mapping[slot]) === String(key)) o.selected = true; sel.appendChild(o); }
+            row.appendChild(span); row.appendChild(sel); wrap.appendChild(row);
           }
         } catch (_) {}
       }
@@ -513,7 +531,15 @@
         else if (res.applyResult && res.applyResult.skipped) { $("schedNote").textContent = "Gespeichert (greift nur auf dem Windows-PC)."; toast("Gespeichert"); }
         else { $("schedNote").textContent = "Aktiv: schlafen " + body.sleepTime + ", aufwachen " + body.wakeTime + "."; toast("Gespeichert"); }
       });
-      $("saveMapping").addEventListener("click", async () => { const m = {}; for (const slot of slots) { const v = $("map-" + slot).value; m[slot] = v === "" ? null : v; } await api("/api/displays", m); toast("Gespeichert – Player starten neu"); });
+      $("saveMapping").addEventListener("click", async () => { const m = {}; document.querySelectorAll("#mapRows select").forEach((sel) => { m[sel.dataset.slot] = sel.value === "" ? null : sel.value; }); await api("/api/displays", m); toast("Gespeichert – Player starten neu"); });
+      $("saveScreens").addEventListener("click", async () => {
+        const n = Math.max(1, Math.min(8, parseInt($("screenCount").value, 10) || 1));
+        if (!confirm(n + " Bildschirme übernehmen? Die Playlists werden dabei zurückgesetzt.")) return;
+        const ids = Array.from({ length: n }, (_, i) => String(i + 1));
+        await api("/api/screens", { screens: ids });
+        toast(n + " Bildschirme gesetzt");
+        loadDisplays();
+      });
       $("autostartChk").addEventListener("change", async (e) => { await api("/api/autostart", { enabled: e.target.checked }); toast(e.target.checked ? "Autostart an" : "Autostart aus"); });
       $("maintChk").addEventListener("change", async (e) => { await api("/api/maintenance", { enabled: e.target.checked }); toast(e.target.checked ? "Wartungsmodus an" : "Wartungsmodus aus"); });
       $("openFolderBtn").addEventListener("click", async () => { await api("/api/open-folder", {}); toast("Ordner wird geöffnet"); });

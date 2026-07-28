@@ -78,7 +78,7 @@
       function playItem(item) {
         const incoming = back;
         incoming.src = item.url;
-        incoming.loop = playlist.length <= 1; // single item loops natively
+        incoming.loop = false; // Tizen ignoriert loop teilweise - wir steuern selbst per "ended"
         incoming.load();
         const onReady = () => {
           incoming.play().catch(() => {});
@@ -92,9 +92,13 @@
         incoming.addEventListener("canplay", onReady, { once: true });
       }
 
+      let advancing = false;
       function handleEnded(e) {
         if (e.target !== front) return; // ignore the idle buffer
         if (!playlist.length) return;
+        if (advancing) return;
+        advancing = true;
+        setTimeout(() => { advancing = false; }, 700);
         const step = nextStep(playlist, idx, playsLeft);
         idx = step.idx;
         playsLeft = step.playsLeft;
@@ -125,6 +129,15 @@
       }
       attach(front);
       attach(back);
+
+      // Signage-Displays feuern "ended" nicht immer zuverlaessig. Deshalb
+      // pruefen wir zusaetzlich zyklisch, ob das Video am Ende steht.
+      setInterval(function () {
+        if (!currentKey || !playlist.length || !front) return;
+        var d = front.duration, t = front.currentTime;
+        if (!isFinite(d) || d <= 0) return;
+        if (t >= d - 0.35) handleEnded({ target: front });
+      }, 500);
 
       function connect() {
         ws = new WebSocket("ws://" + location.host);

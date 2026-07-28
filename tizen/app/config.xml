@@ -47,7 +47,7 @@
 
   <feature name="http://tizen.org/feature/screen.size.all"/>
 
-  <tizen:setting screen-orientation="landscape"
+  <tizen:setting screen-orientation="portrait"
                  context-menu="disable"
                  background-support="disable"
                  encryption="disable"

@@ -29,7 +29,33 @@ const DEFAULT_STATE = {
   displayMapping: {},
   autostart: true,
   maintenance: false,
+  // Samsung-Tizen-Displays: erkannte Geraete, offene Install-Absichten und ein
+  // Zaehler, mit dem sich alle Displays per Dashboard neu laden lassen.
+  tizen: { devices: [], pending: {}, epoch: 1 },
 };
+
+function normalizeTizen(val) {
+  const t = val && typeof val === "object" ? val : {};
+  const devices = Array.isArray(t.devices) ? t.devices : [];
+  const pending = t.pending && typeof t.pending === "object" ? t.pending : {};
+  const epoch = Number.isFinite(t.epoch) ? t.epoch : 1;
+  return {
+    devices: devices
+      .filter((d) => d && typeof d === "object")
+      .map((d) => ({
+        duid: String(d.duid || ""),
+        mac: String(d.mac || ""),
+        ip: String(d.ip || ""),
+        model: String(d.model || ""),
+        screen: d.screen == null ? "" : String(d.screen),
+        appVersion: String(d.appVersion || ""),
+        lastSeen: Number(d.lastSeen) || 0,
+      }))
+      .slice(0, 32),
+    pending,
+    epoch,
+  };
+}
 
 function clampRepeat(n) {
   n = parseInt(n, 10);
@@ -102,6 +128,7 @@ class Store {
         displayMapping: parsed.displayMapping && typeof parsed.displayMapping === "object" ? parsed.displayMapping : {},
         autostart: parsed.autostart !== undefined ? !!parsed.autostart : true,
         maintenance: false,
+        tizen: normalizeTizen(parsed.tizen),
       };
       delete this.state.screensMap;
     } catch (err) {
@@ -204,6 +231,77 @@ class Store {
     this.state.maintenance = !!enabled;
     this.save();
     return this.state.maintenance;
+  }
+
+  /* --- Samsung-Tizen-Displays -------------------------------------------- */
+
+  getTizen() {
+    if (!this.state.tizen) this.state.tizen = { devices: [], pending: {}, epoch: 1 };
+    return this.state.tizen;
+  }
+
+  // Ein Display hat die Install-Adresse /tizen/<screen>/ abgerufen. Merken,
+  // damit das Widget beim ersten Melden die richtige Nummer bekommt.
+  setTizenPending(ip, screen) {
+    if (!ip || !screen) return;
+    const t = this.getTizen();
+    const prev = t.pending[ip];
+    if (prev && prev.screen === String(screen)) return; // kein Schreiben noetig
+    t.pending[ip] = { screen: String(screen), at: Date.now() };
+    this.save();
+  }
+
+  clearTizenPending(ip) {
+    const t = this.getTizen();
+    if (t.pending[ip]) {
+      delete t.pending[ip];
+      this.save();
+    }
+  }
+
+  upsertTizenDevice(dev) {
+    const t = this.getTizen();
+    const match = t.devices.find(
+      (d) =>
+        (dev.duid && d.duid === dev.duid) ||
+        (dev.mac && d.mac === dev.mac) ||
+        (!dev.duid && !dev.mac && d.ip === dev.ip)
+    );
+    const before = match ? JSON.stringify(match) : null;
+    const next = { ...(match || {}), ...dev };
+    if (match) Object.assign(match, next);
+    else t.devices.push(next);
+    if (t.devices.length > 32) t.devices.splice(0, t.devices.length - 32);
+
+    // Nur schreiben, wenn sich mehr als der Zeitstempel geaendert hat – der
+    // Heartbeat laeuft alle 15 s und soll die Platte nicht dauerbeschreiben.
+    const changed = !before || JSON.stringify({ ...JSON.parse(before), lastSeen: 0 }) !== JSON.stringify({ ...next, lastSeen: 0 });
+    if (changed) this.save();
+    return next;
+  }
+
+  setTizenDeviceScreen(id, screen) {
+    const t = this.getTizen();
+    const dev = t.devices.find((d) => d.duid === id || d.mac === id || d.ip === id);
+    if (!dev) return false;
+    dev.screen = String(screen);
+    this.save();
+    return true;
+  }
+
+  removeTizenDevice(id) {
+    const t = this.getTizen();
+    const before = t.devices.length;
+    t.devices = t.devices.filter((d) => d.duid !== id && d.mac !== id && d.ip !== id);
+    if (t.devices.length !== before) this.save();
+    return before - t.devices.length;
+  }
+
+  bumpTizenEpoch() {
+    const t = this.getTizen();
+    t.epoch = (Number(t.epoch) || 1) + 1;
+    this.save();
+    return t.epoch;
   }
 }
 

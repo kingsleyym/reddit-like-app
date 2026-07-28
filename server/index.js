@@ -7,6 +7,7 @@ const os = require("os");
 const express = require("express");
 const multer = require("multer");
 const { WebSocketServer } = require("ws");
+const { createTizenRoutes, ONLINE_MS } = require("./tizen");
 
 const SLOTS = ["left", "middle", "right"];
 
@@ -25,6 +26,7 @@ function startServer(opts) {
     onScreens,
     rendererDir: rendererDirOpt,
     assetsDir: assetsDirOpt,
+    tizenDir: tizenDirOpt,
     version = "",
   } = opts;
 
@@ -51,6 +53,31 @@ function startServer(opts) {
   }
   app.get("/player", (req, res) => { noCache(res); res.sendFile(path.join(rendererDir, "player.html")); });
   app.get(["/", "/dashboard"], (req, res) => { noCache(res); res.sendFile(path.join(rendererDir, "dashboard.html")); });
+
+  // --- Samsung-Tizen-Displays (SSSP "Custom App") --------------------------
+  // Wo die signierten .wgt-Pakete liegen: Datenordner zuerst, dann das Repo.
+  const tizenDirs = [...new Set([
+    process.env.MENUBOARD_TIZEN_DIR,
+    tizenDirOpt,
+    path.join(mediaDir, "..", "tizen"),
+    path.join(__dirname, "..", "tizen", "dist"),
+  ].filter(Boolean).map((d) => path.resolve(d)))];
+
+  // Manche Firmwares hängen einen zusätzlichen Schrägstrich an die
+  // Install-Adresse ("…/tizen/2//sssp_config.xml"). Doppelte Schrägstriche
+  // deshalb einebnen, bevor geroutet wird.
+  app.use((req, res, next) => {
+    if (req.url.indexOf("//") !== -1 && /^\/(tizen|api\/tizen)\b/i.test(req.url)) {
+      req.url = req.url.replace(/\/{2,}/g, "/");
+    }
+    next();
+  });
+
+  const tizen = createTizenRoutes({ store, tizenDirs, version, onChange: () => broadcastState() });
+  app.use("/tizen", tizen.installRouter);
+  app.use("/api/tizen", tizen.apiRouter);
+  // Manche Geräte fragen die Datei direkt im Wurzelverzeichnis ab.
+  app.get("/sssp_config.xml", (req, res) => res.redirect(302, "/tizen/sssp_config.xml"));
 
   // --- Upload --------------------------------------------------------------
   const storage = multer.diskStorage({
@@ -304,6 +331,33 @@ function startServer(opts) {
       paths: { media: mediaDir, config: store.dataFile },
       version: version,
       live: livePlaylists(),
+      tizen: tizenState(),
+    };
+  }
+
+  // Zustand der Samsung-Displays fuer das Dashboard.
+  function tizenState() {
+    const t = store.getTizen();
+    const now = Date.now();
+    let widget = null;
+    try { widget = tizen.widgetInfo(0); } catch (_) {}
+    return {
+      epoch: t.epoch,
+      dirs: tizenDirs,
+      widget: widget
+        ? { name: widget.fileName, ver: widget.ver, size: widget.size, mtime: widget.mtime }
+        : null,
+      devices: (t.devices || []).map((d) => ({
+        id: d.duid || d.mac || d.ip,
+        duid: d.duid,
+        mac: d.mac,
+        ip: d.ip,
+        model: d.model,
+        screen: d.screen,
+        appVersion: d.appVersion,
+        lastSeen: d.lastSeen,
+        online: now - (d.lastSeen || 0) < ONLINE_MS,
+      })),
     };
   }
 

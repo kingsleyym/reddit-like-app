@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>MenuBoard</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      background: #000; color: #fff; overflow: hidden;
+      cursor: none;
+      -webkit-user-select: none; user-select: none;
+      font-family: "Samsung One", Arial, Helvetica, sans-serif;
+    }
+    ::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+    #player {
+      position: fixed; inset: 0; top: 0; left: 0;
+      width: 100%; height: 100%;
+      border: 0; margin: 0; padding: 0; display: block;
+      background: #000; z-index: 1;
+    }
+    /* Fängt Fernbedienungs-Tasten ab, damit der iframe sie nicht schluckt. */
+    #keycatcher {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 2; outline: none; background: transparent;
+    }
+    #splash, #setup {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 3; background: #000;
+      display: -webkit-box; display: flex;
+      -webkit-box-orient: vertical; -webkit-box-pack: center; -webkit-box-align: center;
+      flex-direction: column; justify-content: center; align-items: center;
+      text-align: center;
+    }
+    #setup { display: none; background: #05070c; z-index: 4; }
+    .title { font-size: 3.2vw; font-weight: 700; letter-spacing: .04em; }
+    .sub   { font-size: 1.5vw; opacity: .72; margin-top: 1.6vh; line-height: 1.5; }
+    .tiny  { font-size: 1.05vw; opacity: .45; margin-top: 3vh; line-height: 1.7; }
+    .err   { color: #ff6b6b; }
+    .ok    { color: #56d364; }
+    #spin {
+      width: 3.2vw; height: 3.2vw; margin-bottom: 2.6vh;
+      border: 0.35vw solid rgba(255,255,255,.16);
+      border-top-color: rgba(255,255,255,.8);
+      border-radius: 50%;
+      -webkit-animation: mbspin 1s linear infinite; animation: mbspin 1s linear infinite;
+    }
+    @-webkit-keyframes mbspin { to { -webkit-transform: rotate(360deg); } }
+    @keyframes mbspin { to { transform: rotate(360deg); } }
+
+    #toast {
+      position: fixed; left: 50%; bottom: 6vh; z-index: 5;
+      -webkit-transform: translateX(-50%); transform: translateX(-50%);
+      background: rgba(0,0,0,.82); border: 1px solid rgba(255,255,255,.18);
+      border-radius: 0.8vw; padding: 1.2vh 2.4vw;
+      font-size: 1.5vw; display: none;
+    }
+
+    /* Setup-Bildschirm */
+    .setup-box { width: 62vw; text-align: left; }
+    .setup-h { font-size: 2.4vw; font-weight: 700; margin-bottom: 2.4vh; }
+    .row { display: -webkit-box; display: flex; -webkit-box-align: center; align-items: center; margin-bottom: 1.8vh; }
+    .row .lbl { width: 16vw; font-size: 1.5vw; opacity: .7; }
+    .row .val {
+      -webkit-box-flex: 1; flex: 1;
+      font-size: 2vw; padding: 1vh 1.4vw; border-radius: 0.6vw;
+      background: #0d1320; border: 2px solid #1d2740; letter-spacing: .04em;
+    }
+    .row.active .val { border-color: #4f8cff; background: #101a2e; }
+    .row.active .lbl { opacity: 1; color: #8ab4ff; }
+    .legend { margin-top: 3vh; font-size: 1.2vw; opacity: .55; line-height: 1.9; }
+    .legend b { color: #8ab4ff; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <iframe id="player" src="about:blank" scrolling="no" frameborder="0"></iframe>
+  <div id="keycatcher" tabindex="0"></div>
+
+  <div id="splash">
+    <div id="spin"></div>
+    <div class="title">MenuBoard</div>
+    <div class="sub" id="splashMsg">Starte …</div>
+    <div class="tiny" id="splashInfo"></div>
+  </div>
+
+  <div id="setup">
+    <div class="setup-box">
+      <div class="setup-h">MenuBoard – Einstellungen</div>
+      <div class="row" id="rowIp"><div class="lbl">Server-IP</div><div class="val" id="valIp">–</div></div>
+      <div class="row" id="rowPort"><div class="lbl">Port</div><div class="val" id="valPort">8787</div></div>
+      <div class="row" id="rowScreen"><div class="lbl">Bildschirm-Nr.</div><div class="val" id="valScreen">1</div></div>
+      <div class="legend">
+        <b>0–9</b> Ziffer eingeben &nbsp;·&nbsp; <b>◀</b> löschen &nbsp;·&nbsp; <b>▶</b> Punkt „.“ einfügen<br />
+        <b>▲ ▼</b> Feld wechseln &nbsp;·&nbsp; <b>ENTER</b> speichern und neu laden &nbsp;·&nbsp; <b>RETURN/EXIT</b> abbrechen<br />
+        <span id="setupInfo"></span>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <!-- Samsung-Signage-APIs. Die $-Pfade löst die Tizen-Laufzeit selbst auf;
+       im normalen Browser laufen sie ins Leere, das ist unkritisch. -->
+  <script type="text/javascript" src="$WEBAPIS/webapis/webapis.js"></script>
+  <script type="text/javascript" src="$B2BAPIS/b2bapis/b2bapis.js"></script>
+
+  <script type="text/javascript" src="mb-config.js"></script>
+  <script type="text/javascript" src="loader.js"></script>
+</body>
+</html>

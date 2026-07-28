@@ -11,6 +11,24 @@ und spielen offline – kein Internet im laufenden Betrieb nötig.
 
 ---
 
+## Samsung-Signage-Displays (Tizen)
+
+Die vier Samsung-Displays können den Player **ohne Zusatzhardware** direkt als
+native Tizen-App ausführen. Der Server liefert das signierte App-Paket selbst
+aus; am Display wird nur eine Adresse eingetragen:
+
+```
+http://<SERVER-IP>:8787/tizen/1     (bzw. /2, /3, /4)
+```
+
+Die vollständige Anleitung – Tizen Studio einrichten, Zertifikat erzeugen,
+bauen, signieren, am Display installieren, Fehlersuche – steht in
+**[`tizen/README.md`](tizen/README.md)**.
+
+Übersicht aller Install-Adressen im Browser: `http://<SERVER-IP>:8787/tizen`
+
+---
+
 ## Was der Kunde installiert
 
 Nur **eine Datei**: `MenuBoard-Setup.exe`. Doppelklick → Installieren → fertig.

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MenuBoard – Tizen-Web-Widget für Samsung SSSP Signage-Displays.
+
+  Diese Datei ist die Quelle. Der Build (tizen/build.js) kopiert sie nach
+  tizen/build/ und ersetzt dort nur die mit "MB:" markierten Stellen
+  (Version, App-Name, Paket-ID, optionale Partner-Privilegien).
+  Bitte die Marker-Kommentare nicht entfernen.
+-->
+<widget xmlns="http://www.w3.org/ns/widgets"
+        xmlns:tizen="http://tizen.org/ns/widgets"
+        id="http://menuboard.local/tizen/player"
+        version="1.0.0"
+        viewmodes="fullscreen">
+
+  <!-- Paket-ID: exakt 10 alphanumerische Zeichen. App-ID = <paket>.<AppName> -->
+  <tizen:application id="MenuBoard1.MenuBoard" package="MenuBoard1" required_version="2.4"/>
+  <tizen:profile name="tv-samsung"/>
+
+  <name>MenuBoard</name>
+  <icon src="icon.png"/>
+  <content src="index.html"/>
+  <author href="http://menuboard.local" email="info@menuboard.local">MenuBoard</author>
+  <description>MenuBoard Signage Player</description>
+
+  <!--
+    Netzwerk-Freigabe. Drei verschiedene Mechanismen, alle drei werden gebraucht:
+      access                        -> XHR/fetch/Subresourcen (WARP)
+      tizen:allow-navigation        -> Top-Level-Navigation + iframe-Ziele
+      tizen:content-security-policy -> überschreibt Tizens Default-CSP
+                                       (default ist script-src 'self' und würde
+                                       die Player-Seite blockieren)
+    Achtung: sobald allow-navigation oder CSP gesetzt sind, schaltet die
+    Laufzeit von WARP- auf CSP-Modus. Deshalb bleibt <access> zusätzlich drin.
+  -->
+  <access origin="*" subdomains="true"/>
+  <tizen:allow-navigation>*</tizen:allow-navigation>
+  <tizen:content-security-policy>default-src * data: blob: filesystem: 'unsafe-inline' 'unsafe-eval'; script-src * data: blob: filesystem: 'unsafe-inline' 'unsafe-eval'; style-src * data: blob: filesystem: 'unsafe-inline'; img-src * data: blob: filesystem:; media-src * data: blob: filesystem:; connect-src * data: blob: filesystem: ws: wss:; frame-src * data: blob: filesystem:; font-src * data: blob: filesystem:;</tizen:content-security-policy>
+
+  <!-- Public-Level-Privilegien: funktionieren mit einem normalen (nicht-Partner) Zertifikat. -->
+  <tizen:privilege name="http://tizen.org/privilege/internet"/>
+  <tizen:privilege name="http://tizen.org/privilege/application.launch"/>
+  <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+  <tizen:privilege name="http://developer.samsung.com/privilege/network.public"/>
+  <tizen:privilege name="http://developer.samsung.com/privilege/productinfo"/>
+  <!-- MB:PRIVILEGES -->
+
+  <feature name="http://tizen.org/feature/screen.size.all"/>
+
+  <tizen:setting screen-orientation="landscape"
+                 context-menu="disable"
+                 background-support="disable"
+                 encryption="disable"
+                 install-location="auto"
+                 hwkey-event="enable"
+                 pointing-device-support="disable"/>
+</widget>

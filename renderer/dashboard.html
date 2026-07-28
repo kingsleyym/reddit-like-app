@@ -259,6 +259,15 @@
       </div>
 
       <div class="card">
+        <h2>Samsung-Displays (Tizen)</h2>
+        <div id="tizenWidget" class="hint" style="margin-bottom:10px">…</div>
+        <div id="tizenUrls"></div>
+        <div id="tizenDevices" style="margin-top:12px"></div>
+        <button class="btn ghost block" id="tizenReload" style="margin-top:10px">Alle Displays neu laden</button>
+        <p class="hint">Diese Adresse am Display unter <b>Menü → Custom App</b> eintragen (Ordner-Adresse, keine Datei). Nach dem Neustart installiert sich die App selbst.</p>
+      </div>
+
+      <div class="card">
         <h2>Bildschirme</h2>
         <div class="time-row" style="align-items:flex-end">
           <div class="field"><label>Anzahl Bildschirme</label><input type="number" id="screenCount" min="1" max="8" value="3" /></div>
@@ -436,6 +445,39 @@
         if (state.paths && state.paths.media) $("mediaPath").textContent = state.paths.media;
         $("appVersion").textContent = state.version ? "MenuBoard " + state.version : "MenuBoard";
         if (document.activeElement !== $("screenCount")) $("screenCount").value = screenList().length;
+        renderTizen();
+      }
+
+      function renderTizen() {
+        const t = (state && state.tizen) || {};
+        const w = t.widget;
+        $("tizenWidget").innerHTML = w
+          ? `Paket <b>${escapeHtml(w.name)}</b> · Version <b>${escapeHtml(w.ver)}</b> · ${Math.round((w.size || 0) / 1024)} KB`
+          : `<span style="color:#ff8a8a">Noch kein .wgt-Paket vorhanden.</span> Zuerst <code>node tizen/build.js</code> ausführen.`;
+
+        const origin = location.origin;
+        $("tizenUrls").innerHTML = screenList()
+          .map((s) => `<div class="url-item"><span class="lbl">${escapeHtml(posName(s))}</span><span class="val">${escapeHtml(origin)}/tizen/${encodeURIComponent(s)}</span></div>`)
+          .join("");
+
+        const devs = t.devices || [];
+        if (!devs.length) {
+          $("tizenDevices").innerHTML = `<p class="hint">Noch kein Samsung-Display verbunden.</p>`;
+          return;
+        }
+        $("tizenDevices").innerHTML = devs
+          .map((d) => {
+            const opts = screenList()
+              .map((s) => `<option value="${escapeHtml(s)}"${String(s) === String(d.screen) ? " selected" : ""}>${escapeHtml(posName(s))}</option>`)
+              .join("");
+            const label = escapeHtml(d.model || "Samsung-Display");
+            const sub = escapeHtml([d.ip, d.duid ? "DUID " + String(d.duid).slice(0, 10) : ""].filter(Boolean).join(" · "));
+            return `<div class="map-row" data-id="${escapeHtml(d.id)}" style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <span class="lbl" style="flex:1 1 auto;min-width:0">${d.online ? "🟢" : "⚪"} ${label}<br /><span class="hint" style="font-size:11px;margin:0">${sub}</span></span>
+              <select class="tizen-screen" data-id="${escapeHtml(d.id)}" style="flex:0 0 132px;width:132px">${opts}</select>
+            </div>`;
+          })
+          .join("");
       }
 
       function renderAll() { renderLive(); renderScenes(); renderMedia(); renderMore(); }
@@ -544,6 +586,12 @@
       $("maintChk").addEventListener("change", async (e) => { await api("/api/maintenance", { enabled: e.target.checked }); toast(e.target.checked ? "Wartungsmodus an" : "Wartungsmodus aus"); });
       $("openFolderBtn").addEventListener("click", async () => { await api("/api/open-folder", {}); toast("Ordner wird geöffnet"); });
       $("restartBtn").addEventListener("click", async () => { await api("/api/power", { action: "restart-players" }); toast("Player werden neu gestartet"); });
+      $("tizenReload").addEventListener("click", async () => { await api("/api/tizen/reload", {}); toast("Displays laden neu"); });
+      $("tizenDevices").addEventListener("change", async (e) => {
+        const sel = e.target.closest(".tizen-screen"); if (!sel) return;
+        await api("/api/tizen/assign", { id: sel.dataset.id, screen: sel.value });
+        toast("Zuordnung gespeichert");
+      });
       $("sleepBtn").addEventListener("click", async () => { if (confirm("PC jetzt in den Schlaf schicken?")) await api("/api/power", { action: "sleep" }); });
 
       const dz = $("dropzone");

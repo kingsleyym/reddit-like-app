@@ -69,6 +69,7 @@ async function main() {
     getDisplays: () => [], // no local monitors in server mode
     rendererDir: web.rendererDir,
     assetsDir: web.assetsDir,
+    tizenDir: path.join(dir, "tizen"),
   });
 
   const nets = os.networkInterfaces();
@@ -84,6 +85,7 @@ async function main() {
   console.log(" Dashboard:    http://localhost:" + PORT);
   for (const ip of ips) console.log("               http://" + ip + ":" + PORT);
   console.log(" Displays:     http://<diese-IP>:" + PORT + "/player?screen=1 (2,3,4)");
+  console.log(" Samsung:      http://<diese-IP>:" + PORT + "/tizen  (Install-Adressen)");
   console.log("========================================");
   return info;
 }

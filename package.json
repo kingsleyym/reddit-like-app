@@ -1,6 +1,6 @@
 {
   "name": "menu-board",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Synchrones 4K-Menue-Board fuer drei Bildschirme (Restaurant)",
   "main": "electron/main.js",
   "scripts": {
@@ -43,7 +43,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },

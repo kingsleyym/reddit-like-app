@@ -62,6 +62,7 @@
         currentKey = key;
         playlist = list;
         idx = 0;
+        bufferedUrl = null;
         if (!list.length) {
           front.pause(); front.removeAttribute("src"); front.load();
           back.pause(); back.removeAttribute("src"); back.load();
@@ -75,21 +76,57 @@
       }
 
       // Load an item into the back buffer and cross-fade it in.
+      // Welche URL liegt bereits abspielbereit im hinteren Puffer?
+      let bufferedUrl = null;
+
+      // Naechstes Video JETZT in den hinteren Puffer legen, waehrend das
+      // aktuelle noch laeuft. Ohne das beginnt das Laden erst nach "ended" -
+      // und genau daraus entsteht die Luecke zwischen zwei Clips.
+      function preloadIntoBuffer() {
+        if (playlist.length < 2) return;
+        const nxt = playlist[(idx + 1) % playlist.length];
+        if (!nxt || !nxt.url) return;
+        if (bufferedUrl === nxt.url) return;   // liegt schon bereit
+        try {
+          back.src = nxt.url;
+          back.loop = false;
+          back.preload = "auto";
+          back.load();
+          bufferedUrl = nxt.url;
+        } catch (_) {}
+      }
+
       function playItem(item) {
         const incoming = back;
-        incoming.src = item.url;
-        incoming.loop = false; // Tizen ignoriert loop teilweise - wir steuern selbst per "ended"
-        incoming.load();
-        const onReady = () => {
+
+        const start = () => {
           incoming.play().catch(() => {});
           incoming.classList.add("active"); incoming.classList.remove("idle");
           front.classList.add("idle"); front.classList.remove("active");
           const old = front;
           front = incoming; back = old;
+          bufferedUrl = null;
           announce(item.videoId);
-          setTimeout(() => { try { old.pause(); old.removeAttribute("src"); old.load(); } catch (_) {} }, 800);
+          // Der alte Puffer wird geleert - danach gleich das naechste Video
+          // hineinladen, damit der uebernaechste Wechsel wieder nahtlos ist.
+          setTimeout(() => {
+            try { old.pause(); old.removeAttribute("src"); old.load(); } catch (_) {}
+            preloadIntoBuffer();
+          }, 800);
         };
-        incoming.addEventListener("canplay", onReady, { once: true });
+
+        // Steckt genau dieses Video schon abspielbereit im Puffer, geht es
+        // ohne Ladevorgang los - das ist der uebergangslose Fall.
+        if (bufferedUrl === item.url && incoming.readyState >= 3) {
+          start();
+          return;
+        }
+
+        incoming.src = item.url;
+        incoming.loop = false; // Tizen ignoriert loop teilweise - wir steuern selbst per "ended"
+        incoming.preload = "auto";
+        incoming.load();
+        incoming.addEventListener("canplay", start, { once: true });
       }
 
       let advancing = false;

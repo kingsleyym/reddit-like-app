@@ -281,7 +281,50 @@
     });
   }
 
+  /* --- Player-Modus: nativ (AVPlay) oder iframe (HTML5) ------------------
+     Der native Weg umgeht die HTML5-Grenzen der Signage-Browser
+     (max. Full HD, max. 30 fps, nur ein Video gleichzeitig) und spielt aus
+     dem lokalen Speicher statt vom Server zu streamen. Kann das Display das
+     nicht, bleibt alles beim Alten - deshalb die Pruefung statt einer
+     harten Umstellung. Mit MB_CONFIG.nativePlayer === false laesst er sich
+     ausdruecklich abschalten. */
+  var nativeChecked = false;
+  var nativeOk = false;
+
+  function nativeMode() {
+    if (!nativeChecked) {
+      nativeChecked = true;
+      // Der native AVPlay-Weg ist standardmaessig AUS. Er startete auf den
+      // QM43C-Panels nicht zuverlaessig (Video kam nicht hoch). Zum Testen
+      // in mb-config.js  nativePlayer: true  setzen.
+      nativeOk = !!(window.MB_NATIVE &&
+                    CFG.nativePlayer === true &&
+                    safe(function () { return window.MB_NATIVE.isAvailable(); }));
+      if (nativeOk) {
+        try { document.body.className += " native"; } catch (e) {}
+      }
+      log("Player-Modus:", nativeOk ? "nativ (AVPlay, lokaler Speicher)" : "iframe (HTML5-Video)");
+    }
+    return nativeOk;
+  }
+
+  function loadPlayerNative() {
+    // Kein iframe-onload, das den Splash ausblendet - das macht hier der
+    // Statusrueckruf des nativen Players, sobald das Bild wirklich laeuft.
+    state.loaded = true;
+    if (state.loadTimer) { clearTimeout(state.loadTimer); state.loadTimer = null; }
+
+    window.MB_NATIVE.start(state.base, state.screen, {
+      onStatus: function (msg, detail) {
+        if (!msg) hideSplash();
+        else showSplash(msg, detail || ("Bildschirm " + state.screen));
+      }
+    });
+  }
+
   function loadPlayer(force) {
+    if (nativeMode()) { loadPlayerNative(); return; }
+
     var url = playerUrl();
     if (!force && state.loaded && state.lastUrl && url.split("&cb=")[0] === state.lastUrl.split("&cb=")[0]) return;
 

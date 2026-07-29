@@ -43,6 +43,11 @@
   <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
   <tizen:privilege name="http://developer.samsung.com/privilege/network.public"/>
   <tizen:privilege name="http://developer.samsung.com/privilege/productinfo"/>
+  <!-- Fuer den nativen Player: Videos lokal ablegen und herunterladen.
+       Alle drei sind Public-Level, ein Partner-Zertifikat ist NICHT noetig. -->
+  <tizen:privilege name="http://tizen.org/privilege/filesystem.read"/>
+  <tizen:privilege name="http://tizen.org/privilege/filesystem.write"/>
+  <tizen:privilege name="http://tizen.org/privilege/download"/>
   <!-- MB:PRIVILEGES -->
 
   <feature name="http://tizen.org/feature/screen.size.all"/>

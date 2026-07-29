@@ -104,6 +104,87 @@ function startServer(opts) {
     res.json({ ok: true, video });
   });
 
+  // --- Tizen-Paket per Browser austauschen (Fernwartung) -------------------
+  // Damit laesst sich die signierte .wgt aus der Ferne einspielen - ueber
+  // Tailscale genuegt der Browser, kein Remote-Desktop und kein Dateizugriff
+  // auf den Server-PC. Zielordner ist derselbe, in dem der Server ohnehin
+  // nach Paketen sucht.
+  const wgtDir = path.join(mediaDir, "..", "tizen");
+
+  const wgtUpload = multer({
+    storage: multer.diskStorage({
+      destination: (req, file, cb) => {
+        try { fs.mkdirSync(wgtDir, { recursive: true }); } catch (_) {}
+        cb(null, wgtDir);
+      },
+      // Nur den reinen Dateinamen uebernehmen - keine Pfadanteile aus dem
+      // Browser, sonst koennte man damit aus dem Ordner ausbrechen.
+      filename: (req, file, cb) => {
+        const base = path.basename(String(file.originalname || "MenuBoard.wgt"));
+        cb(null, base.replace(/[^A-Za-z0-9._-]/g, "_"));
+      },
+    }),
+    limits: { fileSize: 200 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+      if (!/\.wgt$/i.test(file.originalname || "")) {
+        return cb(new Error("Nur .wgt-Dateien"));
+      }
+      cb(null, true);
+    },
+  });
+
+  app.post("/api/tizen/upload", (req, res) => {
+    wgtUpload.single("wgt")(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message });
+      if (!req.file) return res.status(400).json({ error: "keine Datei empfangen" });
+      broadcastState();
+      res.json({ ok: true, file: req.file.filename, size: req.file.size, dir: wgtDir });
+    });
+  });
+
+  // Kleine Seite zum Hochladen. Bewusst ausserhalb von /tizen/<N>, damit sie
+  // nicht mit den Install-Adressen der Displays kollidiert.
+  app.get("/tizen-upload", (req, res) => {
+    let vorhanden = [];
+    try {
+      vorhanden = fs.readdirSync(wgtDir)
+        .filter((f) => /\.wgt$/i.test(f))
+        .map((f) => {
+          const st = fs.statSync(path.join(wgtDir, f));
+          return f + " — " + st.size + " Bytes — " + st.mtime.toLocaleString("de-DE");
+        });
+    } catch (_) {}
+
+    noCache(res);
+    res.type("text/html; charset=utf-8").send(
+      '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+      "<title>MenuBoard — Tizen-Paket</title><style>" +
+      "body{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:#0d1117;color:#e6edf3;margin:0;padding:6vh 5vw;line-height:1.6}" +
+      "h1{font-size:1.4rem;margin:0 0 1.5rem}h2{font-size:1rem;opacity:.7;margin:2rem 0 .6rem;font-weight:600}" +
+      "code{background:#161b22;padding:.15rem .4rem;border-radius:4px;font-size:.9em}" +
+      "ul{padding-left:1.2rem}li{margin:.3rem 0;font-size:.92rem}" +
+      "form{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:1.4rem;margin:1rem 0}" +
+      "input[type=file]{width:100%;margin-bottom:1rem;color:#e6edf3}" +
+      "button{background:#238636;color:#fff;border:0;border-radius:7px;padding:.7rem 1.5rem;font-size:1rem;cursor:pointer}" +
+      "button:hover{background:#2ea043}.hint{opacity:.6;font-size:.85rem;margin-top:1rem}" +
+      "</style></head><body>" +
+      "<h1>MenuBoard — Tizen-Paket austauschen</h1>" +
+      '<form method="post" action="/api/tizen/upload" enctype="multipart/form-data">' +
+      '<input type="file" name="wgt" accept=".wgt" required>' +
+      "<button type=\"submit\">Hochladen</button>" +
+      '<div class="hint">Die Datei ersetzt das bisherige Paket. Danach die Displays ' +
+      "aus- und wieder einschalten — sie installieren beim Booten von allein neu.</div>" +
+      "</form>" +
+      "<h2>Aktuell im Ordner</h2>" +
+      (vorhanden.length ? "<ul><li>" + vorhanden.join("</li><li>") + "</li></ul>"
+                        : "<p>Noch kein Paket vorhanden.</p>") +
+      "<h2>Ordner</h2><p><code>" + wgtDir + "</code></p>" +
+      "<h2>Install-Adressen</h2><p>Siehe <code>/tizen</code></p>" +
+      "</body></html>"
+    );
+  });
+
   // --- State ---------------------------------------------------------------
   app.get("/api/state", (req, res) => res.json(publicState()));
 

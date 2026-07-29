@@ -180,6 +180,9 @@ function writeRuntimeConfig(dir, screen, version) {
     buildVersion: version,
     pollMs: 15000,
     dailyReloadHour: 4,
+    // Nativer AVPlay-Player. Standard: aus. Mit  --native  einschalten,
+    // um eine Testfassung zu bauen.
+    nativePlayer: !!args.native,
   };
   fs.writeFileSync(
     path.join(dir, "mb-config.js"),

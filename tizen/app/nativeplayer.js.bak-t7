@@ -36,7 +36,7 @@
   "use strict";
 
   var LOG_PREFIX = "[MB-native]";
-  var BUILD_TAG = "nativ-T12-part";   // sichtbare Kennung, damit klar ist, welcher Build laeuft
+  var BUILD_TAG = "nativ-T6";   // sichtbare Kennung, damit klar ist, welcher Build laeuft
   var STORAGE = "wgt-private";      // privater, beschreibbarer App-Speicher
   var SUBDIR = "media";             // darin legen wir die Videos ab
   var RETRY_MS = 4000;              // Wartezeit vor erneutem Verbindungsversuch
@@ -157,20 +157,13 @@
 
   /** Liegt die Datei schon lokal? Liefert den Pfad oder null. */
   function localPathIfPresent(url) {
-    // Laufender Download = Datei ist halbfertig -> NICHT verwenden.
-    // (Genau daraus entstand der sporadische PLAYER_ERROR_INVALID_URI.)
-    if (state.downloading[url]) return null;
     if (state.localPaths[url]) return state.localPaths[url];
     if (!state.dir) return null;
 
     var name = fileNameFor(url);
     var f = safe(function () { return state.dir.resolve(name); }, null);
     if (f && !f.isDirectory) {
-      // WICHTIG: toURI() liefert die echte file://-Adresse. fullPath ist nur
-      // Tizens virtueller Pfad ("wgt-private/...") - den quittiert AVPlay
-      // mit PLAYER_ERROR_INVALID_URI.
-      var p = safe(function () { return f.toURI(); }, null) ||
-              safe(function () { return f.fullPath; }, null);
+      var p = safe(function () { return f.fullPath; }, null);
       if (p) { state.localPaths[url] = p; return p; }
     }
     return null;
@@ -199,8 +192,7 @@
       state.downloading[url] = true;
       log("Download startet im Hintergrund:", url, "->", name);
 
-      var partName = name + ".part";
-      var req = new global.tizen.DownloadRequest(url, dir.fullPath, partName);
+      var req = new global.tizen.DownloadRequest(url, dir.fullPath, name);
 
       var listener = {
         onprogress: function (id, received, total) {
@@ -216,23 +208,20 @@
           cb(new Error("Download abgebrochen"));
         },
         oncompleted: function (id, fullPath) {
-          // Fertig heruntergeladen -> von .part auf den finalen Namen
-          // umbenennen. Erst DANACH ist die Datei fuer den Player sichtbar.
-          dir.moveTo(dir.fullPath + "/" + partName, dir.fullPath + "/" + name, true,
-            function () {
-              delete state.downloading[url];
-              var f = safe(function () { return dir.resolve(name); }, null);
-              var p = f && (safe(function () { return f.toURI(); }, null) ||
-                            safe(function () { return f.fullPath; }, null));
-              if (!p) { cb(new Error("Pfad nach Download unbekannt")); return; }
-              state.localPaths[url] = p;
-              log("Download fertig:", p);
-              cb(null, p);
-            },
-            function (e) {
-              delete state.downloading[url];
-              cb(new Error("Umbenennen fehlgeschlagen: " + (e && e.message)));
-            });
+          delete state.downloading[url];
+          var p = fullPath;
+          // Manche Firmwares liefern nur den Dateinamen zurück.
+          if (p && p.indexOf("/") === -1) {
+            p = safe(function () { return dir.resolve(p).fullPath; }, null) || p;
+          }
+          if (!p) {
+            var f = safe(function () { return dir.resolve(name); }, null);
+            p = f && safe(function () { return f.fullPath; }, null);
+          }
+          if (!p) { cb(new Error("Pfad nach Download unbekannt")); return; }
+          state.localPaths[url] = p;
+          log("Download fertig:", p);
+          cb(null, p);
         },
         onfailed: function (id, error) {
           delete state.downloading[url];
@@ -287,11 +276,7 @@
       for (var j = 0; j < files.length; j++) {
         var f = files[j];
         var n = safe(function () { return f.name; }, "");
-        if (!n) continue;
-        // .part-Reste abgebrochener Downloads immer entsorgen
-        if (!/\.part$/i.test(n) && keep[n]) continue;
-        if (/\.part$/i.test(n)) { /* immer loeschen */ }
-        else if (keep[n]) continue;
+        if (!n || keep[n]) continue;
         log("verwaiste Datei entfernen:", n);
         safe(function () { state.dir.deleteFile(f.fullPath, function () {}, function () {}); });
       }
@@ -299,109 +284,109 @@
   }
 
   /* ============================================================ AVPlay */
-  /*
-   * Umgesetzt nach Samsungs offiziellem Signage-Beispiel
-   * "AVPlaySeamlessStillMode" (Apache-2.0, github.com/SamsungDForum):
-   *   - ZWEI Player ueber webapis.avplaystore.getPlayer() statt des
-   *     einzelnen webapis.avplay (Singleton ist auf Signage unzuverlaessig).
-   *   - Reihenfolge: open -> setListener -> setDisplayRect(0,0,1920,1080)
-   *     -> prepare() SYNCHRON -> play().
-   *   - Wechsel: alter Player setVideoStillMode("true") + stop() ->
-   *     letztes Bild bleibt stehen, nahtlos, kein Schwarz.
-   */
 
-  var av = { players: null, active: -1, gen: 0 };
+  var avplayReady = false;
 
-  function avInit() {
-    if (av.players) return av.players;
-    var st = global.webapis && global.webapis.avplaystore;
-    if (st && typeof st.getPlayer === "function") {
-      av.players = [st.getPlayer(), st.getPlayer()];
-      log("avplaystore: zwei Player-Instanzen (Samsung-Signage-Muster)");
-    } else {
-      av.players = [global.webapis.avplay];
-      log("avplaystore fehlt - Rueckfall auf einzelnen avplay");
-    }
-    return av.players;
+  function displayRect() {
+    // WICHTIG: setDisplayRect rechnet laut Samsung-Dokumentation IMMER in
+    // einer 1920x1080-Basis - unabhaengig davon, welche Aufloesung die
+    // Anwendung selbst hat. Vorher standen hier window.innerWidth/Height,
+    // was beim Hochformat-Widget 1080x1920 ergab: also genau vertauscht.
+    // Das Bild landete dadurch ausserhalb der sichtbaren Flaeche.
+    // Feste Werte sind hier richtig, nicht die Fenstergroesse.
+    return { x: 0, y: 0, w: 1920, h: 1080 };
   }
 
   function avStop() {
-    var ps = av.players || [];
-    for (var i = 0; i < ps.length; i++) {
-      (function (pl) {
-        safe(function () { pl.stop(); });
-        safe(function () { pl.close(); });
-      })(ps[i]);
-    }
-    av.active = -1;
-    av.gen++;
+    safe(function () { global.webapis.avplay.stop(); });
+    safe(function () { global.webapis.avplay.close(); });
+    avplayReady = false;
     state.playing = false;
   }
 
   function avPlayFile(path, onEnded, onError) {
-    var ps = avInit();
-    var nextIdx = ps.length > 1 ? (av.active === 0 ? 1 : 0) : 0;
-    var np = ps[nextIdx];
-    var op = av.active >= 0 ? ps[av.active] : null;
-    var myGen = ++av.gen;
-
-    var listener = {
-      onbufferingstart: function () {},
-      onbufferingprogress: function () {},
-      onbufferingcomplete: function () {},
-      oncurrentplaytime: function () {},
-      onevent: function () {},
-      ondrmevent: function () {},
-      onstreamcompleted: function () {
-        if (myGen !== av.gen) return;
-        log("Stream zu Ende");
-        if (typeof onEnded === "function") onEnded();
-      },
-      onerror: function (e) {
-        if (myGen !== av.gen) return;
-        var msg = (e && (e.message || e.name)) || String(e || "unbekannt");
-        log("AVPlay-Fehler:", msg);
-        if (typeof onError === "function") onError(new Error(msg));
-      }
-    };
-
+    var r = displayRect();
     try {
-      if (op && ps.length > 1) {
-        safe(function () { op.setVideoStillMode("true"); });
-        safe(function () { op.stop(); });
-      } else if (ps.length === 1) {
-        safe(function () {
-          var stt = np.getState();
-          if (stt && stt !== "NONE" && stt !== "IDLE") { np.stop(); np.close(); }
-        });
-      }
+      // Ein evtl. laufender Stream muss sauber beendet werden, sonst
+      // verweigert AVPlay das nächste open().
+      safe(function () {
+        var st = global.webapis.avplay.getState();
+        if (st && st !== "NONE" && st !== "IDLE") {
+          global.webapis.avplay.stop();
+          global.webapis.avplay.close();
+        }
+      });
 
-      np.open(path);
-      np.setListener(listener);
-      np.setDisplayRect(0, 0, 1920, 1080);
-      np.prepare();
-      // Die Drehung macht jetzt AVPlay selbst - NACH prepare (Zustand READY).
-      // Der fruehere Haenger mit diesem Befehl war sehr wahrscheinlich die
-      // damals kaputte URL, nicht die Drehung. Steht das Bild auf dem Kopf:
-      // 90 -> 270 tauschen.
-      safe(function () { np.setDisplayRotation("PLAYER_DISPLAY_ROTATION_90"); });
-      safe(function () { np.setVideoStillMode("false"); });
-      np.play();
+      global.webapis.avplay.open(path);
+      global.webapis.avplay.setDisplayRect(r.x, r.y, r.w, r.h);
+      safe(function () {
+        global.webapis.avplay.setDisplayMethod("PLAYER_DISPLAY_MODE_FULL_SCREEN");
+      });
 
-      av.active = nextIdx;
-      avplayReady = true;
-      state.playing = true;
-      status("", "");
-      log("Wiedergabe läuft (" + BUILD_TAG + "):", path);
+      global.webapis.avplay.setListener({
+        onstreamcompleted: function () {
+          log("Stream zu Ende");
+          if (typeof onEnded === "function") onEnded();
+        },
+        onerror: function (e) {
+          var msg = (e && (e.message || e.name)) || "unbekannt";
+          log("AVPlay-Fehler:", msg);
+          if (typeof onError === "function") onError(new Error(msg));
+        },
+        onbufferingstart: function () {},
+        onbufferingcomplete: function () {},
+        oncurrentplaytime: function () {}
+      });
+
+      // Puffer bewusst klein halten - Standardwerte sind auf Internet-
+      // Streaming ausgelegt und verzoegern den Start im lokalen Netz unnoetig.
+      safe(function () {
+        global.webapis.avplay.setBufferingParam("PLAYER_BUFFER_FOR_PLAY", "PLAYER_BUFFER_UNIT_SEC", 2);
+      });
+      safe(function () {
+        global.webapis.avplay.setBufferingParam("PLAYER_BUFFER_FOR_RESUME", "PLAYER_BUFFER_UNIT_SEC", 2);
+      });
+
+      // prepareAsync ist laut Samsung vorzuziehen - es blockiert den
+      // Anwendungsthread nicht. Zur Sicherheit mit Zeitlimit: kommt der
+      // Rueckruf nicht, versuchen wir es einmal synchron.
+      var vorbereitet = false;
+
+      global.webapis.avplay.prepareAsync(function () {
+        vorbereitet = true;
+        avplayReady = true;
+        safe(function () { global.webapis.avplay.play(); });
+        state.playing = true;
+        status("", "");
+        log("Wiedergabe läuft:", path);
+      }, function (e) {
+        vorbereitet = true;
+        var msg = (e && (e.message || e.name)) || "prepare fehlgeschlagen";
+        log("prepareAsync meldet Fehler:", msg);
+        if (typeof onError === "function") onError(new Error(msg));
+      });
+
+      setTimeout(function () {
+        if (vorbereitet) return;
+        log("prepareAsync ohne Rueckmeldung - versuche synchron");
+        safe(function () { state.onStatus && state.onStatus("prepare ohne Antwort - 2. Versuch (" + BUILD_TAG + ")", path); });
+        try {
+          global.webapis.avplay.prepare();
+          avplayReady = true;
+          safe(function () { global.webapis.avplay.play(); });
+          state.playing = true;
+          status("", "");
+          log("Wiedergabe läuft (synchron):", path);
+        } catch (e2) {
+          var m2 = (e2 && (e2.message || e2.name)) || "prepare fehlgeschlagen";
+          log("auch synchron fehlgeschlagen:", m2);
+          if (typeof onError === "function") onError(new Error(m2));
+        }
+      }, 6000);
     } catch (e) {
-      var m = (e && (e.message || e.name)) || "Start fehlgeschlagen";
-      log("avPlayFile Ausnahme:", m);
-      status("Video-Fehler: " + m + " (" + BUILD_TAG + ")", path);
-      if (typeof onError === "function") onError(new Error(m));
+      if (typeof onError === "function") onError(e);
     }
   }
-
-  var avplayReady = false;
 
   /* ============================================================ Playlist */
 
@@ -459,25 +444,6 @@
     }, function (e) {
       log("Wiedergabefehler:", e.message);
       state.lastError = e.message;
-      // Selbstheilung: War die Quelle eine lokale Datei, ist sie offenbar
-      // beschaedigt -> Cache-Eintrag verwerfen, Datei loeschen und sofort
-      // direkt vom Server streamen statt in den Fehler zu laufen.
-      if (local) {
-        delete state.localPaths[url];
-        safe(function () {
-          var bn = fileNameFor(url);
-          state.dir.deleteFile(state.dir.fullPath + "/" + bn, function () {}, function () {});
-        });
-        log("lokale Datei verworfen, streame vom Server");
-        avPlayFile(url, function () {
-          var s2 = nextStep(state.playlist, state.idx, state.playsLeft);
-          state.idx = s2.idx; state.playsLeft = s2.playsLeft; playCurrent();
-        }, function (e2) {
-          log("auch Streamen fehlgeschlagen:", e2.message);
-          state.lastError = e2.message;
-        });
-        return;
-      }
       status("Video-Fehler: " + e.message + " (" + BUILD_TAG + ")", quelle);
       setTimeout(function () {
         var s = nextStep(state.playlist, state.idx, 1);

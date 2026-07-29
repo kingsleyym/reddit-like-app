@@ -120,8 +120,12 @@ function startServer(opts) {
       // Nur den reinen Dateinamen uebernehmen - keine Pfadanteile aus dem
       // Browser, sonst koennte man damit aus dem Ordner ausbrechen.
       filename: (req, file, cb) => {
-        const base = path.basename(String(file.originalname || "MenuBoard.wgt"));
-        cb(null, base.replace(/[^A-Za-z0-9._-]/g, "_"));
+        const base = path.basename(String(file.originalname || "MenuBoard.wgt"))
+          .replace(/[^A-Za-z0-9._-]/g, "_");
+        // Vor dem Ueberschreiben die bisherige Version sichern - damit ist
+        // jeder Upload per Knopfdruck rueckgaengig zu machen.
+        try { archiveWgt(base); } catch (_) {}
+        cb(null, base);
       },
     }),
     limits: { fileSize: 200 * 1024 * 1024 },
@@ -140,6 +144,52 @@ function startServer(opts) {
       broadcastState();
       res.json({ ok: true, file: req.file.filename, size: req.file.size, dir: wgtDir });
     });
+  });
+
+  // Sicherungen: backup/<name>.<zeitstempel>.bak - bewusst OHNE .wgt-Endung,
+  // damit der Auslieferungscode sie nie faelschlich an Displays schickt.
+  const wgtBackupDir = path.join(wgtDir, "backup");
+
+  function archiveWgt(name) {
+    const cur = path.join(wgtDir, name);
+    if (!fs.existsSync(cur)) return false;
+    fs.mkdirSync(wgtBackupDir, { recursive: true });
+    fs.renameSync(cur, path.join(wgtBackupDir, name + "." + Date.now() + ".bak"));
+    // Nur die letzten 5 Staende je Datei behalten.
+    const mine = fs.readdirSync(wgtBackupDir)
+      .filter((f) => f.startsWith(name + ".") && f.endsWith(".bak"))
+      .sort()
+      .reverse();
+    for (const f of mine.slice(5)) {
+      try { fs.unlinkSync(path.join(wgtBackupDir, f)); } catch (_) {}
+    }
+    return true;
+  }
+
+  function backupsFor(name) {
+    try {
+      return fs.readdirSync(wgtBackupDir)
+        .filter((f) => f.startsWith(name + ".") && f.endsWith(".bak"))
+        .sort()
+        .reverse();
+    } catch (_) { return []; }
+  }
+
+  // Zurueck zur vorherigen Version: aktueller Stand wird selbst gesichert,
+  // die juengste Sicherung wird wieder aktiv. Zweimal druecken = wieder vor.
+  app.post("/api/tizen/rollback", express.urlencoded({ extended: false }), (req, res) => {
+    const name = path.basename(String((req.body && req.body.file) || ""));
+    if (!/^[A-Za-z0-9._-]+\.wgt$/i.test(name)) {
+      return res.status(400).type("text/plain").send("Ungueltiger Dateiname");
+    }
+    const list = backupsFor(name);
+    if (!list.length) return res.status(404).type("text/plain").send("Keine Sicherung vorhanden");
+
+    const newest = path.join(wgtBackupDir, list[0]);
+    try { archiveWgt(name); } catch (_) {}
+    fs.renameSync(newest, path.join(wgtDir, name));
+    broadcastState();
+    res.redirect("/tizen-upload");
   });
 
   // Kleine Seite zum Hochladen. Bewusst ausserhalb von /tizen/<N>, damit sie
@@ -179,10 +229,78 @@ function startServer(opts) {
       "<h2>Aktuell im Ordner</h2>" +
       (vorhanden.length ? "<ul><li>" + vorhanden.join("</li><li>") + "</li></ul>"
                         : "<p>Noch kein Paket vorhanden.</p>") +
+      (() => {
+        let out = "";
+        try {
+          const names = fs.readdirSync(wgtDir).filter((f) => /\.wgt$/i.test(f));
+          for (const n of names) {
+            const bl = backupsFor(n);
+            if (!bl.length) continue;
+            const ts = Number(bl[0].slice(n.length + 1, -4));
+            const when = isFinite(ts) ? new Date(ts).toLocaleString("de-DE") : "?";
+            out += '<form method="post" action="/api/tizen/rollback" style="margin:6px 0">' +
+              '<input type="hidden" name="file" value="' + n + '">' +
+              '<button type="submit" style="background:#30363d">' +
+              "&#8630; " + n + " auf vorherige Version zur&uuml;cksetzen</button>" +
+              '<span style="opacity:.55;font-size:.85rem;margin-left:.6rem">gesichert ' + when +
+              " &middot; " + bl.length + " Stand/St&auml;nde</span></form>";
+          }
+        } catch (_) {}
+        return out ? "<h2>Zur&uuml;cksetzen</h2>" + out +
+          '<p class="hint">Jeder Upload sichert den vorherigen Stand automatisch (letzte 5). ' +
+          "Nach dem Zur&uuml;cksetzen: Displays aus- und einschalten. Nochmal dr&uuml;cken = wieder vor.</p>" : "";
+      })() +
       "<h2>Ordner</h2><p><code>" + wgtDir + "</code></p>" +
       "<h2>Install-Adressen</h2><p>Siehe <code>/tizen</code></p>" +
       "</body></html>"
     );
+  });
+
+  // --- Branding: Name, Boot-Dauer und Logo fuer den Boot-Screen -------------
+  const brandingDir = path.join(mediaDir, "..", "branding");
+  app.use("/branding", express.static(brandingDir));
+
+  app.post("/api/branding", (req, res) => {
+    const { name, bootSeconds } = req.body || {};
+    const b = store.setBranding({ name, bootSeconds });
+    broadcastState();
+    res.json({ ok: true, branding: b });
+  });
+
+  const logoUpload = multer({
+    storage: multer.diskStorage({
+      destination: (req, file, cb) => {
+        try { fs.mkdirSync(brandingDir, { recursive: true }); } catch (_) {}
+        cb(null, brandingDir);
+      },
+      filename: (req, file, cb) => {
+        const ext = (path.extname(file.originalname || "") || ".png").toLowerCase();
+        // Alte Logos entsorgen, damit immer genau eines existiert.
+        try {
+          for (const f of fs.readdirSync(brandingDir)) {
+            if (/^logo\./i.test(f)) fs.unlinkSync(path.join(brandingDir, f));
+          }
+        } catch (_) {}
+        cb(null, "logo" + ext);
+      },
+    }),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+      if (!/\.(png|jpe?g|svg|webp)$/i.test(file.originalname || "")) {
+        return cb(new Error("Nur PNG, JPG, SVG oder WebP"));
+      }
+      cb(null, true);
+    },
+  });
+
+  app.post("/api/branding/logo", (req, res) => {
+    logoUpload.single("logo")(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message });
+      if (!req.file) return res.status(400).json({ error: "keine Datei" });
+      store.setBranding({ logo: req.file.filename });
+      broadcastState();
+      res.json({ ok: true, logo: req.file.filename });
+    });
   });
 
   // --- State ---------------------------------------------------------------
@@ -409,6 +527,7 @@ function startServer(opts) {
       displayMapping: s.displayMapping,
       autostart: s.autostart,
       maintenance: s.maintenance,
+      branding: s.branding || null,
       paths: { media: mediaDir, config: store.dataFile },
       version: version,
       live: livePlaylists(),

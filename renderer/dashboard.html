@@ -283,6 +283,17 @@
       </div>
 
       <div class="card">
+        <h2>Branding</h2>
+        <div class="row-between" style="margin-bottom:12px"><span class="lbl">Name</span><input id="brandNameInp" style="background:#0d1320;border:1px solid #2a3550;border-radius:8px;color:#fff;padding:8px 10px;width:55%" /></div>
+        <div class="row-between" style="margin-bottom:12px"><span class="lbl">Boot-Dauer (Sek., 0 = aus)</span><input id="brandBootInp" type="number" min="0" max="15" step="1" style="background:#0d1320;border:1px solid #2a3550;border-radius:8px;color:#fff;padding:8px 10px;width:90px" /></div>
+        <button class="btn ghost block" id="brandSaveBtn" style="margin-bottom:14px">Branding speichern</button>
+        <div class="sub" style="margin-bottom:8px"><h3>Boot-Logo (optional, PNG/SVG)</h3></div>
+        <input type="file" id="brandLogoInp" accept=".png,.jpg,.jpeg,.svg,.webp" style="margin-bottom:8px;color:#8b98b8" />
+        <button class="btn ghost block" id="brandLogoBtn">Logo hochladen</button>
+        <p class="hint" style="margin-top:10px">Der Boot-Screen erscheint beim Einschalten der Displays: schwarzer Hintergrund, Name tippt sich ein, Logo blendet auf. Ohne Logo laeuft die Namens-Animation allein.</p>
+      </div>
+
+      <div class="card">
         <h2>System</h2>
         <div class="row-between" style="margin-bottom:16px"><span class="lbl">Mit Windows automatisch starten</span><label class="toggle"><input type="checkbox" id="autostartChk" /><span class="track"></span></label></div>
         <div class="row-between" style="margin-bottom:14px"><span class="lbl">Wartungsmodus (Player schließen)</span><label class="toggle"><input type="checkbox" id="maintChk" /><span class="track"></span></label></div>
@@ -443,7 +454,12 @@
         $("autostartChk").checked = state.autostart !== false;
         $("maintChk").checked = !!state.maintenance;
         if (state.paths && state.paths.media) $("mediaPath").textContent = state.paths.media;
-        $("appVersion").textContent = state.version ? "MenuBoard " + state.version : "MenuBoard";
+        const bname = (state.branding && state.branding.name) || "MenuBoard";
+        $("appVersion").textContent = bname + (state.version ? " " + state.version : "");
+        $("brandText").textContent = bname;
+        document.title = bname;
+        if (document.activeElement !== $("brandNameInp")) $("brandNameInp").value = bname;
+        if (document.activeElement !== $("brandBootInp")) $("brandBootInp").value = (state.branding && state.branding.bootSeconds != null) ? state.branding.bootSeconds : 4;
         if (document.activeElement !== $("screenCount")) $("screenCount").value = screenList().length;
         renderTizen();
       }
@@ -581,6 +597,17 @@
         await api("/api/screens", { screens: ids });
         toast(n + " Bildschirme gesetzt");
         loadDisplays();
+      });
+      $("brandSaveBtn").addEventListener("click", async () => {
+        await api("/api/branding", { name: $("brandNameInp").value, bootSeconds: Number($("brandBootInp").value) });
+        toast("Branding gespeichert");
+      });
+      $("brandLogoBtn").addEventListener("click", async () => {
+        const f = $("brandLogoInp").files[0];
+        if (!f) { toast("Erst eine Datei wählen"); return; }
+        const fd = new FormData(); fd.append("logo", f);
+        const r = await fetch("/api/branding/logo", { method: "POST", body: fd });
+        toast(r.ok ? "Logo hochgeladen" : "Upload fehlgeschlagen");
       });
       $("autostartChk").addEventListener("change", async (e) => { await api("/api/autostart", { enabled: e.target.checked }); toast(e.target.checked ? "Autostart an" : "Autostart aus"); });
       $("maintChk").addEventListener("change", async (e) => { await api("/api/maintenance", { enabled: e.target.checked }); toast(e.target.checked ? "Wartungsmodus an" : "Wartungsmodus aus"); });

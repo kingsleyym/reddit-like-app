@@ -401,6 +401,7 @@ function createTizenRoutes(opts) {
       epoch: store.getTizen().epoch,
       screens: store.getState().screens,
       serverVersion: version,
+      branding: store.getState().branding || null,
       ts: Date.now(),
     });
   });

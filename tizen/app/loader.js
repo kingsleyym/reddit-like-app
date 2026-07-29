@@ -254,6 +254,13 @@
         state.epoch = data.epoch;
       }
 
+      // Branding (Name, Boot-Dauer, Logo) fuer den naechsten Start merken
+      // und den Splash-Titel sofort mitziehen.
+      if (data && data.branding) {
+        safe(function () { store("branding", JSON.stringify(data.branding)); });
+        if (data.branding.name) applyBrandName(data.branding.name);
+      }
+
       if (first || changed || epochChanged || wasOffline || !state.loaded) {
         loadPlayer(changed || epochChanged || wasOffline);
       }
@@ -357,6 +364,108 @@
   };
 
   /* ---------------------------------------------------------- Splash / UI */
+
+  /* ------------------------------------------------ Boot-Screen ---------
+     Kingsley-Systems-Look: oben Matrix-Regen (nur oberes Drittel, blasst
+     nach unten aus), unten leuchtende Wellen-Konturen in drei Tiefen-
+     ebenen, mittig Logo + fein getippter Name. Dauer kommt aus dem
+     Dashboard (Branding), 0 = aus. Laeuft rein lokal aus dem Cache. */
+
+  function brandingCached() {
+    var b = { name: "Kingsley Systems", bootSeconds: 4, logo: null };
+    safe(function () {
+      var raw = store("branding");
+      if (raw) { var j = JSON.parse(raw); if (j && typeof j === "object") b = j; }
+    });
+    return b;
+  }
+
+  function applyBrandName(name) {
+    safe(function () {
+      var t = document.getElementById("splashTitle");
+      if (t) t.textContent = name;
+    });
+  }
+
+  function startBootRain(ms) {
+    var c = document.getElementById("bootRain");
+    if (!c || !c.getContext) return;
+    var w = c.clientWidth || window.innerWidth || 1080;
+    var h = c.clientHeight || Math.floor((window.innerHeight || 1920) * 0.34);
+    // Halbe Aufloesung: sieht durch das Ausblenden identisch aus,
+    // kostet aber nur ein Viertel der Rechenzeit.
+    c.width = Math.max(160, Math.floor(w / 2));
+    c.height = Math.max(90, Math.floor(h / 2));
+    var ctx = c.getContext("2d");
+    var chars = "01<>/#+=*.:アイウカキクサシスセタチツナニハヒフ";
+    var fs = 15;
+    var cols = Math.floor(c.width / fs);
+    var drops = [];
+    for (var i = 0; i < cols; i++) drops[i] = Math.floor(Math.random() * -40);
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, c.width, c.height);
+    var iv = setInterval(function () {
+      ctx.fillStyle = "rgba(0,0,0,0.16)";
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.font = fs + "px monospace";
+      for (var i = 0; i < cols; i++) {
+        var ch = chars.charAt(Math.floor(Math.random() * chars.length));
+        ctx.fillStyle = Math.random() < 0.07
+          ? "rgba(215,235,255,0.9)"     // einzelne helle "Funken"
+          : "rgba(135,175,225,0.5)";    // Grundton, passend zu den Wellen
+        ctx.fillText(ch, i * fs, drops[i] * fs);
+        if (drops[i] * fs > c.height && Math.random() > 0.965) {
+          drops[i] = Math.floor(Math.random() * -15);
+        }
+        drops[i]++;
+      }
+    }, 95);
+    setTimeout(function () { clearInterval(iv); }, ms);
+  }
+
+  function showBoot() {
+    var b = brandingCached();
+    applyBrandName(b.name || "Kingsley Systems");
+
+    var dur = Number(b.bootSeconds);
+    if (!isFinite(dur)) dur = 4;
+    if (dur <= 0) return;
+
+    var boot = document.getElementById("boot");
+    var typed = document.getElementById("bootTyped");
+    var cursor = document.getElementById("bootCursor");
+    var logo = document.getElementById("bootLogo");
+    if (!boot || !typed) return;
+
+    var name = String(b.name || "Kingsley Systems").toUpperCase();
+    boot.className = "on";
+    typed.textContent = "";
+    cursor.className = "";
+
+    if (b.logo && state.base) {
+      logo.onerror = function () { logo.style.display = "none"; };
+      logo.style.display = "";
+      logo.src = state.base + "/branding/" + b.logo + "?v=" + String(b.logo);
+    } else {
+      logo.style.display = "none";
+    }
+
+    startBootRain(dur * 1000);
+
+    // Tippgeschwindigkeit haengt an der Gesamtdauer.
+    var typeMs = Math.max(30, Math.min(65, (dur * 1000 * 0.35) / Math.max(1, name.length)));
+    var i = 0;
+    var t = setInterval(function () {
+      typed.textContent = name.slice(0, ++i);
+      if (i >= name.length) {
+        clearInterval(t);
+        cursor.className = "blink";
+        setTimeout(function () { if (logo.style.display !== "none") logo.className = "in"; }, 400);
+      }
+    }, typeMs);
+
+    setTimeout(function () { boot.className = "on out"; }, Math.max(1300, dur * 1000 - 600));
+    setTimeout(function () { boot.className = ""; clearInterval(t); }, Math.max(1900, dur * 1000));
+  }
 
   function showSplash(msg, info) {
     el.splashMsg.innerHTML = msg || "";
@@ -495,6 +604,7 @@
     resolveInitial();
     grabFocus();
 
+    showBoot();
     showSplash("Starte …", state.base ? ("Server: " + state.base) : "");
 
     if (!state.base) { showSetupHint("Keine Server-Adresse hinterlegt."); }

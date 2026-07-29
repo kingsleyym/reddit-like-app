@@ -29,6 +29,8 @@ const DEFAULT_STATE = {
   displayMapping: {},
   autostart: true,
   maintenance: false,
+  // Branding: Name im Dashboard + Boot-Screen der Displays
+  branding: { name: "Kingsley Systems", bootSeconds: 4, logo: null },
   // Samsung-Tizen-Displays: erkannte Geraete, offene Install-Absichten und ein
   // Zaehler, mit dem sich alle Displays per Dashboard neu laden lassen.
   tizen: { devices: [], pending: {}, epoch: 1 },
@@ -129,6 +131,7 @@ class Store {
         autostart: parsed.autostart !== undefined ? !!parsed.autostart : true,
         maintenance: false,
         tizen: normalizeTizen(parsed.tizen),
+        branding: { ...d.branding, ...(parsed.branding || {}) },
       };
       delete this.state.screensMap;
     } catch (err) {
@@ -214,6 +217,22 @@ class Store {
     this.state.schedule = { ...this.state.schedule, ...schedule };
     this.save();
     return this.state.schedule;
+  }
+
+  setBranding(patch) {
+    const cur = this.state.branding || {};
+    const next = { ...cur };
+    if (patch && typeof patch.name === "string" && patch.name.trim()) {
+      next.name = patch.name.trim().slice(0, 40);
+    }
+    if (patch && patch.bootSeconds !== undefined) {
+      const n = Number(patch.bootSeconds);
+      if (isFinite(n)) next.bootSeconds = Math.max(0, Math.min(15, Math.round(n)));
+    }
+    if (patch && patch.logo !== undefined) next.logo = patch.logo;
+    this.state.branding = next;
+    this.save();
+    return next;
   }
 
   setDisplayMapping(mapping) {

@@ -42,7 +42,7 @@
       text-align: center;
     }
     #setup { display: none; background: #05070c; z-index: 4; }
-    .title { font-size: 3.2vw; font-weight: 700; letter-spacing: .04em; }
+    .title { font-size: 1.7vw; font-weight: 300; letter-spacing: .5em; text-transform: uppercase; text-indent: .5em; opacity: .92; position: relative; z-index: 2; }
     .sub   { font-size: 1.5vw; opacity: .72; margin-top: 1.6vh; line-height: 1.5; }
     .tiny  { font-size: 1.05vw; opacity: .45; margin-top: 3vh; line-height: 1.7; }
     .err   { color: #ff6b6b; }
@@ -79,6 +79,83 @@
     .row.active .lbl { opacity: 1; color: #8ab4ff; }
     .legend { margin-top: 3vh; font-size: 1.2vw; opacity: .55; line-height: 1.9; }
     .legend b { color: #8ab4ff; font-weight: 600; }
+
+    /* ---- Kingsley Systems: Boot-Screen & System-Look ---- */
+    #boot {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 6; background: #000; display: none; overflow: hidden;
+      -webkit-transition: opacity .6s ease; transition: opacity .6s ease;
+    }
+    #boot.on { display: -webkit-box; display: flex;
+      -webkit-box-orient: vertical; -webkit-box-pack: center; -webkit-box-align: center;
+      flex-direction: column; justify-content: center; align-items: center; }
+    #boot.out { opacity: 0; }
+
+    /* Matrix-Regen: nur oberes Drittel, blasst nach unten aus */
+    #bootRain {
+      position: absolute; top: 0; left: 0; width: 100%; height: 34%;
+      opacity: .55; pointer-events: none;
+      -webkit-mask-image: -webkit-linear-gradient(top, rgba(0,0,0,.95), rgba(0,0,0,0));
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,.95), rgba(0,0,0,0));
+    }
+
+    /* Logo + Name: klein, leicht, viel Luft */
+    #bootLogo {
+      max-width: 20vw; max-height: 16vh; margin-bottom: 3.4vh;
+      opacity: 0; -webkit-transform: translateY(1vh); transform: translateY(1vh);
+      -webkit-transition: opacity .9s ease, -webkit-transform .9s ease;
+      transition: opacity .9s ease, transform .9s ease;
+      position: relative; z-index: 2;
+    }
+    #bootLogo.in { opacity: 1; -webkit-transform: translateY(0); transform: translateY(0); }
+    #bootName {
+      position: relative; z-index: 2;
+      font-family: "Samsung One", Arial, Helvetica, sans-serif;
+      font-size: 1.6vw; font-weight: 300; letter-spacing: .55em;
+      text-transform: uppercase; color: #dfe8f2; white-space: nowrap;
+      text-indent: .55em; /* gleicht das letzte letter-spacing optisch aus */
+    }
+    #bootCursor { opacity: .55; font-weight: 200; }
+    #bootCursor.blink { -webkit-animation: bcur .9s step-end infinite; animation: bcur .9s step-end infinite; }
+    @-webkit-keyframes bcur { 50% { opacity: 0; } } @keyframes bcur { 50% { opacity: 0; } }
+
+    /* Wellen: leuchtende Konturen in drei Tiefenebenen */
+    .mbwaves {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 26vh;
+      overflow: hidden; pointer-events: none; z-index: 1;
+    }
+    .mbwaves svg {
+      position: absolute; bottom: 0; left: 0; width: 200%; height: 70%;
+    }
+    .mbwaves path { fill: none; stroke-linecap: round; }
+    .mbwaves .w1 {
+      bottom: 0;
+      -webkit-animation: wdrift 18s linear infinite, wpulse1 4.5s ease-in-out infinite;
+      animation: wdrift 18s linear infinite, wpulse1 4.5s ease-in-out infinite;
+    }
+    .mbwaves .w1 path { stroke: rgba(165,205,255,.9); stroke-width: 2; }
+    .mbwaves .w2 {
+      bottom: 5vh; -webkit-filter: blur(1.5px); filter: blur(1.5px);
+      -webkit-animation: wdriftR 26s linear infinite, wpulse2 6s ease-in-out infinite;
+      animation: wdriftR 26s linear infinite, wpulse2 6s ease-in-out infinite;
+    }
+    .mbwaves .w2 path { stroke: rgba(140,185,245,.5); stroke-width: 2.5; }
+    .mbwaves .w3 {
+      bottom: 10vh; -webkit-filter: blur(4px); filter: blur(4px);
+      -webkit-animation: wdrift 36s linear infinite, wpulse3 8s ease-in-out infinite;
+      animation: wdrift 36s linear infinite, wpulse3 8s ease-in-out infinite;
+    }
+    .mbwaves .w3 path { stroke: rgba(120,165,235,.3); stroke-width: 3.5; }
+    @-webkit-keyframes wdrift  { from { -webkit-transform: translateX(0); } to { -webkit-transform: translateX(-50%); } }
+    @keyframes wdrift          { from { transform: translateX(0); }         to { transform: translateX(-50%); } }
+    @-webkit-keyframes wdriftR { from { -webkit-transform: translateX(-50%); } to { -webkit-transform: translateX(0); } }
+    @keyframes wdriftR         { from { transform: translateX(-50%); }         to { transform: translateX(0); } }
+    @-webkit-keyframes wpulse1 { 0%,100% { opacity: .95; } 50% { opacity: .55; } }
+    @keyframes wpulse1         { 0%,100% { opacity: .95; } 50% { opacity: .55; } }
+    @-webkit-keyframes wpulse2 { 0%,100% { opacity: .5; }  50% { opacity: .9; } }
+    @keyframes wpulse2         { 0%,100% { opacity: .5; }  50% { opacity: .9; } }
+    @-webkit-keyframes wpulse3 { 0%,100% { opacity: .35; } 50% { opacity: .7; } }
+    @keyframes wpulse3         { 0%,100% { opacity: .35; } 50% { opacity: .7; } }
   </style>
 </head>
 <body>
@@ -92,9 +169,14 @@
 
   <div id="splash">
     <div id="spin"></div>
-    <div class="title">MenuBoard</div>
+    <div class="title" id="splashTitle">Kingsley Systems</div>
     <div class="sub" id="splashMsg">Starte …</div>
     <div class="tiny" id="splashInfo"></div>
+    <div class="mbwaves" aria-hidden="true">
+      <svg class="w3" viewBox="0 0 2880 200" preserveAspectRatio="none"><path d="M0,120 C180,60 360,170 540,115 C720,60 900,175 1080,120 C1260,65 1440,170 1620,115 C1800,60 1980,175 2160,120 C2340,65 2520,170 2700,115 C2790,88 2880,120 2880,120"/></svg>
+      <svg class="w2" viewBox="0 0 2880 200" preserveAspectRatio="none"><path d="M0,100 C240,160 480,50 720,105 C960,160 1200,55 1440,100 C1680,150 1920,50 2160,105 C2400,160 2640,55 2880,100"/></svg>
+      <svg class="w1" viewBox="0 0 2880 200" preserveAspectRatio="none"><path d="M0,110 C200,70 400,150 600,108 C800,70 1000,150 1200,110 C1400,72 1600,148 1800,108 C2000,70 2200,150 2400,110 C2600,72 2800,148 2880,112"/></svg>
+    </div>
   </div>
 
   <div id="setup">
@@ -112,6 +194,17 @@
   </div>
 
   <div id="toast"></div>
+
+  <div id="boot">
+    <canvas id="bootRain"></canvas>
+    <img id="bootLogo" alt="" />
+    <div id="bootName"><span id="bootTyped"></span><span id="bootCursor">|</span></div>
+    <div class="mbwaves" aria-hidden="true">
+      <svg class="w3" viewBox="0 0 2880 200" preserveAspectRatio="none"><path d="M0,120 C180,60 360,170 540,115 C720,60 900,175 1080,120 C1260,65 1440,170 1620,115 C1800,60 1980,175 2160,120 C2340,65 2520,170 2700,115 C2790,88 2880,120 2880,120"/></svg>
+      <svg class="w2" viewBox="0 0 2880 200" preserveAspectRatio="none"><path d="M0,100 C240,160 480,50 720,105 C960,160 1200,55 1440,100 C1680,150 1920,50 2160,105 C2400,160 2640,55 2880,100"/></svg>
+      <svg class="w1" viewBox="0 0 2880 200" preserveAspectRatio="none"><path d="M0,110 C200,70 400,150 600,108 C800,70 1000,150 1200,110 C1400,72 1600,148 1800,108 C2000,70 2200,150 2400,110 C2600,72 2800,148 2880,112"/></svg>
+    </div>
+  </div>
 
   <!-- Samsung-Signage-APIs. Die $-Pfade löst die Tizen-Laufzeit selbst auf;
        im normalen Browser laufen sie ins Leere, das ist unkritisch. -->

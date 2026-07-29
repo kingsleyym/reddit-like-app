@@ -1,6 +1,6 @@
 {
   "name": "menu-board",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Synchrones 4K-Menue-Board fuer drei Bildschirme (Restaurant)",
   "main": "electron/main.js",
   "scripts": {

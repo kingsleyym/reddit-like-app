@@ -21,7 +21,7 @@
     <div id="stage">
       <div id="placeholder"><img id="logo" src="/assets/logo.png" alt="" /></div>
       <video id="vidA" class="active" muted playsinline></video>
-      <video id="vidB" class="idle" muted playsinline></video>
+      <!-- Zweites Element bleibt ungenutzt: Tizen dekodiert nur ein Video gleichzeitig. -->
     </div>
     <script>
       // Hide the logo gracefully if none has been added yet (assets/logo.png).
@@ -31,7 +31,7 @@
       const slot = new URLSearchParams(location.search).get("screen") || "left";
       const placeholder = document.getElementById("placeholder");
       let front = document.getElementById("vidA");
-      let back = document.getElementById("vidB");
+      let back = null; // ungenutzt - Tizen dekodiert nur ein Video gleichzeitig
 
       // Playlist state: list = [{ videoId, url, repeat }]
       let playlist = [];
@@ -62,10 +62,8 @@
         currentKey = key;
         playlist = list;
         idx = 0;
-        bufferedUrl = null;
         if (!list.length) {
           front.pause(); front.removeAttribute("src"); front.load();
-          back.pause(); back.removeAttribute("src"); back.load();
           placeholder.style.display = "flex";
           announce(null);
           return;
@@ -76,57 +74,33 @@
       }
 
       // Load an item into the back buffer and cross-fade it in.
-      // Welche URL liegt bereits abspielbereit im hinteren Puffer?
-      let bufferedUrl = null;
+      /* --- EIN Video-Element ------------------------------------------------
+         Samsung-Signage-Displays koennen nur EIN Video gleichzeitig
+         dekodieren (dokumentierte Tizen-Grenze). Der urspruengliche
+         Crossfade zwischen zwei <video>-Elementen laesst beide um denselben
+         Hardware-Decoder konkurrieren - daraus entstehen die Haenger am Ende
+         und am Anfang jedes Clips.
 
-      // Naechstes Video JETZT in den hinteren Puffer legen, waehrend das
-      // aktuelle noch laeuft. Ohne das beginnt das Laden erst nach "ended" -
-      // und genau daraus entsteht die Luecke zwischen zwei Clips.
-      function preloadIntoBuffer() {
-        if (playlist.length < 2) return;
-        const nxt = playlist[(idx + 1) % playlist.length];
-        if (!nxt || !nxt.url) return;
-        if (bufferedUrl === nxt.url) return;   // liegt schon bereit
-        try {
-          back.src = nxt.url;
-          back.loop = false;
-          back.preload = "auto";
-          back.load();
-          bufferedUrl = nxt.url;
-        } catch (_) {}
-      }
+         Deshalb: nur "front" wird benutzt, "back" bleibt leer. Der Wechsel
+         ist ein harter Schnitt statt einer Blende. Auf einem Menueboard
+         faellt das kaum auf - ein ruckelnder Uebergang dagegen schon. */
 
       function playItem(item) {
-        const incoming = back;
+        const v = front;
+        try {
+          v.pause();
+          v.loop = false;
+          v.preload = "auto";
+          v.src = item.url;
+          v.load();
+        } catch (_) {}
 
         const start = () => {
-          incoming.play().catch(() => {});
-          incoming.classList.add("active"); incoming.classList.remove("idle");
-          front.classList.add("idle"); front.classList.remove("active");
-          const old = front;
-          front = incoming; back = old;
-          bufferedUrl = null;
+          v.play().catch(() => {});
+          v.classList.add("active"); v.classList.remove("idle");
           announce(item.videoId);
-          // Der alte Puffer wird geleert - danach gleich das naechste Video
-          // hineinladen, damit der uebernaechste Wechsel wieder nahtlos ist.
-          setTimeout(() => {
-            try { old.pause(); old.removeAttribute("src"); old.load(); } catch (_) {}
-            preloadIntoBuffer();
-          }, 800);
         };
-
-        // Steckt genau dieses Video schon abspielbereit im Puffer, geht es
-        // ohne Ladevorgang los - das ist der uebergangslose Fall.
-        if (bufferedUrl === item.url && incoming.readyState >= 3) {
-          start();
-          return;
-        }
-
-        incoming.src = item.url;
-        incoming.loop = false; // Tizen ignoriert loop teilweise - wir steuern selbst per "ended"
-        incoming.preload = "auto";
-        incoming.load();
-        incoming.addEventListener("canplay", start, { once: true });
+        v.addEventListener("canplay", start, { once: true });
       }
 
       let advancing = false;
@@ -165,7 +139,6 @@
         });
       }
       attach(front);
-      attach(back);
 
       // Signage-Displays feuern "ended" nicht immer zuverlaessig. Deshalb
       // pruefen wir zusaetzlich zyklisch, ob das Video am Ende steht.

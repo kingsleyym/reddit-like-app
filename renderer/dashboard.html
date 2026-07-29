@@ -300,6 +300,8 @@
         <p class="hint" style="margin-top:0; margin-bottom:16px">Im Wartungsmodus werden die Vollbild-Player geschlossen, damit du am PC arbeiten kannst. Die App läuft im Hintergrund weiter.</p>
         <button class="btn ghost block" id="openFolderBtn" style="margin-bottom:8px">Medien-Ordner öffnen</button>
         <button class="btn ghost block" id="restartBtn" style="margin-bottom:8px">Player neu starten</button>
+        <button class="btn ghost block" id="restartAppBtn" style="margin-bottom:8px">App neu starten (Update ziehen)</button>
+        <button class="btn ghost block" id="rebootPcBtn" style="margin-bottom:8px">PC neu starten</button>
         <button class="btn ghost block" id="sleepBtn" style="margin-bottom:16px">PC jetzt schlafen legen</button>
         <div class="sub"><h3>Speicherort der Videos</h3><div class="path" id="mediaPath">…</div></div>
         <div class="sub"><h3>Version</h3><div class="path" id="appVersion">–</div></div>
@@ -613,6 +615,14 @@
       $("maintChk").addEventListener("change", async (e) => { await api("/api/maintenance", { enabled: e.target.checked }); toast(e.target.checked ? "Wartungsmodus an" : "Wartungsmodus aus"); });
       $("openFolderBtn").addEventListener("click", async () => { await api("/api/open-folder", {}); toast("Ordner wird geöffnet"); });
       $("restartBtn").addEventListener("click", async () => { await api("/api/power", { action: "restart-players" }); toast("Player werden neu gestartet"); });
+      $("restartAppBtn").addEventListener("click", async () => {
+        if (!confirm("App jetzt neu starten? Displays laufen weiter, das Dashboard ist kurz weg.")) return;
+        await api("/api/power", { action: "restart-app" }); toast("App startet neu …");
+      });
+      $("rebootPcBtn").addEventListener("click", async () => {
+        if (!confirm("Den ganzen PC neu starten? Dauert 1-2 Minuten, danach kommt alles von allein wieder.")) return;
+        await api("/api/power", { action: "reboot-pc" }); toast("PC startet in 10 Sekunden neu");
+      });
       $("tizenReload").addEventListener("click", async () => { await api("/api/tizen/reload", {}); toast("Displays laden neu"); });
       $("tizenDevices").addEventListener("change", async (e) => {
         const sel = e.target.closest(".tizen-screen"); if (!sel) return;

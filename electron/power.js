@@ -119,6 +119,23 @@ async function runPowerAction(action, helpers) {
     case "restart-players":
       if (helpers && helpers.recreateAllPlayers) helpers.recreateAllPlayers();
       return { ok: true };
+    case "restart-app": {
+      // App komplett neu starten. Beim Start prueft der Updater sofort auf
+      // neue Releases; liegt schon eines bereit, installiert es sich beim
+      // Beenden (autoInstallOnAppQuit). Damit laesst sich ein Update aus
+      // der Ferne anstossen - ohne AnyDesk, ohne RDP.
+      const { app } = require("electron");
+      setTimeout(() => { app.relaunch(); app.quit(); }, 800);
+      return { ok: true, note: "App startet neu" };
+    }
+    case "reboot-pc": {
+      // Windows-Neustart mit 10s Vorlauf. Autologin + Autostart bringen
+      // danach alles von allein wieder hoch.
+      return new Promise((resolve) => {
+        execFile("shutdown", ["/r", "/t", "10"], { windowsHide: true }, () =>
+          resolve({ ok: true, note: "PC startet in 10 Sekunden neu" }));
+      });
+    }
     default:
       throw new Error("unbekannte Aktion: " + action);
   }

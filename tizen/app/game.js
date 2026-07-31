@@ -34,6 +34,13 @@
   var MIRROR_DELAY = 110;
   // Gewinnstufen (vom Server, aufsteigend sortiert): { points, name, img }
   var prizes = [], prizeReached = 0, prizeEls = null;
+  // Schwierigkeit (vom Server): Faktoren fuer Tempo, Spawn-Takt, Beschuss
+  var DIFF = { spd: 1, rate: 1, shoot: 1 };
+  function applyDifficulty(d) {
+    if (d === "leicht") DIFF = { spd: .8, rate: 1.35, shoot: .6 };
+    else if (d === "schwer") DIFF = { spd: 1.25, rate: .75, shoot: 1.5 };
+    else DIFF = { spd: 1, rate: 1, shoot: 1 };
+  }
 
   // Austauschbare Grafiken (Stufe 2): PNG/JPG als URL oder data-URL.
   // Schluessel: ship, enemy (leicht), enemy2 (schwer), bonus, bullet.
@@ -337,7 +344,7 @@
   }
   function spawn() {
     var r = Math.random(), type = r < .66 ? "a" : (r < .92 ? "b" : "bonus");
-    var sp = 2.2 + G.wave * .55 + G.score / 1400;
+    var sp = (2.2 + G.wave * .55 + G.score / 1400) * DIFF.spd;
     G.foes.push({ x: 40 + Math.random() * (W - 80), y: -40, type: type,
       v: (type === "b" ? 1.6 : 1) * sp, w: type === "bonus" ? 54 : 44,
       drift: (Math.random() - .5) * (2 + G.wave * .4), hp: type === "bonus" ? 2 : 1,
@@ -498,14 +505,14 @@
         }
       }
 
-      var rate = Math.max(240, 820 - G.wave * 90 - G.score / 6);
+      var rate = Math.max(180, (820 - G.wave * 90 - G.score / 6) * DIFF.rate);
       if (now - G.lastSpawn > rate) { G.lastSpawn = now; spawn(); }
 
       for (var fi = 0; fi < G.foes.length; fi++) {
         var f = G.foes[fi];
         f.y += f.v; f.x += f.drift;
         if (f.x < 25 || f.x > W - 25) f.drift *= -1;
-        if (f.canShoot && Math.random() < .006) {
+        if (f.canShoot && Math.random() < .006 * DIFF.shoot) {
           G.ebullets.push({ x: f.x, y: f.y + 20, v: 5 + G.wave * .5 });
         }
       }
@@ -676,6 +683,8 @@
         player.imEl.src = msg.player.img;
       } else player.imEl = null;
       prizes = msg.prizes || [];
+      setSkin(msg.skins || {});
+      applyDifficulty(msg.difficulty);
       if (msg.mode === "phone") startMirror(msg.player || {});
       else startGame(msg.player || {});
     } else if (msg.type === "game-mirror") {

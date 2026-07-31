@@ -38,7 +38,19 @@
   },
   "game": {
     "publicBase": "",
-    "mode": "phone"
+    "mode": "controller",
+    "prizes": [
+      {
+        "points": 1000,
+        "name": "test"
+      },
+      {
+        "points": 2000,
+        "name": "test"
+      },
+      null,
+      null
+    ]
   },
   "tizen": {
     "devices": [],

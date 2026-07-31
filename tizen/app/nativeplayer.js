@@ -36,7 +36,7 @@
   "use strict";
 
   var LOG_PREFIX = "[MB-native]";
-  var BUILD_TAG = "nativ-T13-spiel";   // sichtbare Kennung, damit klar ist, welcher Build laeuft
+  var BUILD_TAG = "nativ-T14-grafiken";   // sichtbare Kennung, damit klar ist, welcher Build laeuft
   var STORAGE = "wgt-private";      // privater, beschreibbarer App-Speicher
   var SUBDIR = "media";             // darin legen wir die Videos ab
   var RETRY_MS = 4000;              // Wartezeit vor erneutem Verbindungsversuch

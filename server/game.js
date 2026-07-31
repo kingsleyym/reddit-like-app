@@ -128,6 +128,35 @@ function createGame({ store, wss, screenIds, getLanBase, brandingDir, mainPort, 
     return won ? { name: won.name, points: won.points } : null;
   }
 
+  /* --- Spiel-Grafiken (Schuetze, Gegner, Bonus, Kugel) --------------------- */
+  const SKIN_KEYS = ["ship", "enemy", "enemy2", "bonus", "bullet"];
+  function skinFile(key) {
+    if (!brandingDir || SKIN_KEYS.indexOf(key) === -1) return null;
+    try {
+      for (const f of fs.readdirSync(brandingDir)) {
+        if (new RegExp("^spielskin-" + key + "\\.", "i").test(f)) {
+          return path.join(brandingDir, f);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+  function skinsPayload(forPhone) {
+    const out = {};
+    for (const k of SKIN_KEYS) {
+      const f = skinFile(k);
+      out[k] = !f ? null : (forPhone
+        ? "/skin/" + k
+        : getLanBase() + ":" + (mainPort || 8787) + "/branding/" + path.basename(f) +
+          "?v=" + Math.floor(fs.statSync(f).mtimeMs || 0));
+    }
+    return out;
+  }
+  function difficulty() {
+    const d = (store.getState().game || {}).difficulty;
+    return ["leicht", "normal", "schwer"].indexOf(d) !== -1 ? d : "normal";
+  }
+
   /* ---------------- API fuer das Dashboard (laeuft auf Port 8787) -------- */
   const router = express.Router();
   router.use(express.json());
@@ -160,6 +189,7 @@ function createGame({ store, wss, screenIds, getLanBase, brandingDir, mainPort, 
     if (b.publicBase !== undefined) patch.publicBase = String(b.publicBase || "").trim();
     if (b.mode !== undefined) patch.mode = b.mode === "controller" ? "controller" : "phone";
     if (b.prizes !== undefined) patch.prizes = b.prizes;
+    if (b.difficulty !== undefined) patch.difficulty = b.difficulty;
     const g = store.setGame(patch);
     res.json({ ok: true, publicBase: g.publicBase, mode: gameMode(), prizes: g.prizes });
   });
@@ -191,6 +221,37 @@ function createGame({ store, wss, screenIds, getLanBase, brandingDir, mainPort, 
   });
   router.post("/prize-img/:slot/delete", (req, res) => {
     const f = prizeImgFile(parseInt(req.params.slot, 10) || 0);
+    if (f) { try { fs.unlinkSync(f); } catch (_) {} }
+    res.json({ ok: true });
+  });
+
+  // Spiel-Grafiken hochladen/loeschen (ship, enemy, enemy2, bonus, bullet)
+  const skinUpload = multer({
+    storage: multer.diskStorage({
+      destination: (req, file, cb) => {
+        try { fs.mkdirSync(brandingDir, { recursive: true }); } catch (_) {}
+        cb(null, brandingDir);
+      },
+      filename: (req, file, cb) => {
+        const key = SKIN_KEYS.indexOf(req.params.key) !== -1 ? req.params.key : "ship";
+        try {
+          for (const f of fs.readdirSync(brandingDir)) {
+            if (new RegExp("^spielskin-" + key + "\\.", "i").test(f)) {
+              fs.unlinkSync(path.join(brandingDir, f));
+            }
+          }
+        } catch (_) {}
+        const ext = (path.extname(file.originalname) || ".png").toLowerCase();
+        cb(null, "spielskin-" + key + ext);
+      },
+    }),
+    limits: { fileSize: 8 * 1024 * 1024 },
+  });
+  router.post("/skin/:key", skinUpload.single("img"), (req, res) => {
+    res.json({ ok: true, file: req.file ? req.file.filename : null });
+  });
+  router.post("/skin/:key/delete", (req, res) => {
+    const f = skinFile(req.params.key);
     if (f) { try { fs.unlinkSync(f); } catch (_) {} }
     res.json({ ok: true });
   });
@@ -235,7 +296,13 @@ function createGame({ store, wss, screenIds, getLanBase, brandingDir, mainPort, 
       lastScore: session ? session.lastScore : null,
       publicBase: (store.getState().game || {}).publicBase || "",
       mode: gameMode(),
+      difficulty: difficulty(),
       hasLogo: !!logoFile(),
+      skins: (function () {
+        const o = {};
+        for (const k of SKIN_KEYS) o[k] = !!skinFile(k);
+        return o;
+      })(),
       prizeSlots: (function () {
         const g = store.getState().game || {};
         const arr = Array.isArray(g.prizes) ? g.prizes : [];
@@ -282,6 +349,12 @@ function createGame({ store, wss, screenIds, getLanBase, brandingDir, mainPort, 
     if (!f) return res.status(404).end();
     res.sendFile(f);
   });
+  // Spiel-Grafiken fuer die Handy-Seite
+  pub.get("/skin/:key", (req, res) => {
+    const f = skinFile(req.params.key);
+    if (!f) return res.status(404).end();
+    res.sendFile(f);
+  });
   pub.get("/", (req, res) => res.type("text/plain").send("Kingsley Systems"));
 
   const pubServer = http.createServer(pub);
@@ -309,8 +382,10 @@ function createGame({ store, wss, screenIds, getLanBase, brandingDir, mainPort, 
       };
       session.state = "running";
       sendToScreen(session.screen, { type: "game-start",
-        player: session.player, mode: session.mode, prizes: prizesPayload(false) });
-      toPhone(ws, { type: "started", mode: session.mode, prizes: prizesPayload(true) });
+        player: session.player, mode: session.mode, prizes: prizesPayload(false),
+        skins: skinsPayload(false), difficulty: difficulty() });
+      toPhone(ws, { type: "started", mode: session.mode, prizes: prizesPayload(true),
+        skins: skinsPayload(true), difficulty: difficulty() });
     }
     else if (m.type === "input") {
       // Nur im Controller-Modus relevant.
@@ -495,6 +570,7 @@ ws.onmessage=function(ev){var m;try{m=JSON.parse(ev.data);}catch(e){return;}
   else if(m.type==="too-late")show("pgLate");
   else if(m.type==="started"){
     mode=m.mode||mode;prizes=m.prizes||[];
+    gApplySkins(m.skins||{});gApplyDiff(m.difficulty);
     if(mode==="phone"){show("pgGame");gameStart();}
     else{show("pad");
       document.getElementById("padName").textContent=(document.getElementById("name").value||"SPIELER").toUpperCase();}
@@ -552,6 +628,15 @@ function startPing(){setInterval(function(){
 /* Gleiche Logik wie auf dem Display; die Koordinaten gehen 1:1 als
    Spiegelbild ans Display raus. */
 var GW=540,GH=960,GP={run:false},gcv=null,gcx=null,gstars=[],lastMirror=0;
+/* Grafiken + Schwierigkeit (kommen vom Server bei "started") */
+var gSkins={},gDiff={spd:1,rate:1,shoot:1};
+function gApplySkins(map){gSkins={};for(var k in map){if(map[k]){
+  var im=new Image();im.src=map[k];gSkins[k]=im;}}}
+function gSkinOk(k){return gSkins[k]&&gSkins[k].complete&&gSkins[k].naturalWidth>0;}
+function gApplyDiff(d){
+  if(d==="leicht")gDiff={spd:.8,rate:1.35,shoot:.6};
+  else if(d==="schwer")gDiff={spd:1.25,rate:.75,shoot:1.5};
+  else gDiff={spd:1,rate:1,shoot:1};}
 function gFit(){
   var st=document.getElementById("gStage");
   var s=Math.min(innerWidth/GW,innerHeight/GH);
@@ -574,7 +659,7 @@ function gCombo(){var now=Date.now();
   gEl("gCombo").textContent=GP.mult>1?("COMBO x"+GP.mult):"";}
 function gSpawn(){
   var r=Math.random(),type=r<.66?"a":(r<.92?"b":"bonus");
-  var sp=2.2+GP.wave*.55+GP.score/1400;
+  var sp=(2.2+GP.wave*.55+GP.score/1400)*gDiff.spd;
   GP.foes.push({id:++GP.nid,x:40+Math.random()*(GW-80),y:-40,type:type,
     v:(type==="b"?1.6:1)*sp,w:type==="bonus"?54:44,
     drift:(Math.random()-.5)*(2+GP.wave*.4),hp:type==="bonus"?2:1,
@@ -636,6 +721,7 @@ function gDrawShip(x,y){
   if(GP.shield){c.save();c.strokeStyle="rgba(140,190,255,.8)";c.lineWidth=2;
     c.shadowColor="#8cbeff";c.shadowBlur=16;
     c.beginPath();c.arc(x,y,42,0,7);c.stroke();c.restore();}
+  if(gSkinOk("ship")){c.drawImage(gSkins.ship,x-34,y-34,68,68);return;}
   c.save();c.translate(x,y);
   c.strokeStyle="#dfe8f2";c.lineWidth=2.5;c.shadowColor="#8cbeff";c.shadowBlur=14;
   c.beginPath();c.moveTo(0,-30);c.lineTo(24,22);c.lineTo(10,14);c.lineTo(0,22);
@@ -645,6 +731,8 @@ function gDrawShip(x,y){
   c.restore();}
 function gDrawFoe(f){
   var c=gcx;
+  var sk=f.type==="bonus"?"bonus":(f.type==="b"?"enemy2":"enemy");
+  if(gSkinOk(sk)){c.drawImage(gSkins[sk],f.x-f.w/2,f.y-f.w/2,f.w,f.w);return;}
   c.save();c.translate(f.x,f.y);c.rotate(Math.sin(GP.t/18+f.x)*0.18);
   if(f.type==="bonus"){c.strokeStyle="#EB5A21";c.shadowColor="#EB5A21";}
   else{c.strokeStyle=f.type==="b"?"#9fd0ff":"#6f9fdf";c.shadowColor="#6f9fdf";}
@@ -692,11 +780,11 @@ function gLoop(){
       GP.bullets.push({id:++GP.nid,x:GP.px,y:GH-110,vx:0});
       if(now<GP.spreadUntil){GP.bullets.push({id:++GP.nid,x:GP.px,y:GH-110,vx:-3.4});
         GP.bullets.push({id:++GP.nid,x:GP.px,y:GH-110,vx:3.4});}}
-    var rate=Math.max(240,820-GP.wave*90-GP.score/6);
+    var rate=Math.max(180,(820-GP.wave*90-GP.score/6)*gDiff.rate);
     if(now-GP.lastSpawn>rate){GP.lastSpawn=now;gSpawn();}
     GP.foes.forEach(function(f){f.y+=f.v;f.x+=f.drift;
       if(f.x<25||f.x>GW-25)f.drift*=-1;
-      if(f.canShoot&&Math.random()<.006)
+      if(f.canShoot&&Math.random()<.006*gDiff.shoot)
         GP.ebullets.push({id:++GP.nid,x:f.x,y:f.y+20,v:5+GP.wave*.5});});
     GP.bullets.forEach(function(b){b.y-=16;b.x+=b.vx;});
     GP.bullets=GP.bullets.filter(function(b){
@@ -733,8 +821,9 @@ function gLoop(){
   }
   GP.foes.forEach(gDrawFoe);
   GP.pows.forEach(gDrawPow);
-  c.fillStyle="#ffd9c4";
-  GP.bullets.forEach(function(b){c.save();c.shadowColor="#EB5A21";c.shadowBlur=10;
+  GP.bullets.forEach(function(b){
+    if(gSkinOk("bullet")){c.drawImage(gSkins.bullet,b.x-9,b.y-20,18,24);return;}
+    c.save();c.fillStyle="#ffd9c4";c.shadowColor="#EB5A21";c.shadowBlur=10;
     c.fillRect(b.x-2,b.y-14,4,14);c.restore();});
   c.fillStyle="#ff8c8c";
   GP.ebullets.forEach(function(b){c.save();c.shadowColor="#ff5c5c";c.shadowBlur=8;

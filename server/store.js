@@ -38,7 +38,8 @@ const DEFAULT_STATE = {
   //       Standard ist "phone" - unabhaengig von der Internet-Latenz.
   // prizes: bis zu 4 Gewinnstufen { points, name }; Bilder liegen als
   //         spielpreis<slot>.<ext> im branding-Ordner.
-  game: { publicBase: "", mode: "phone", prizes: [null, null, null, null] },
+  // difficulty: "leicht" | "normal" | "schwer"
+  game: { publicBase: "", mode: "phone", prizes: [null, null, null, null], difficulty: "normal" },
   // Samsung-Tizen-Displays: erkannte Geraete, offene Install-Absichten und ein
   // Zaehler, mit dem sich alle Displays per Dashboard neu laden lassen.
   tizen: { devices: [], pending: {}, epoch: 1 },
@@ -263,6 +264,10 @@ class Store {
         slots.push(pts > 0 && nm ? { points: Math.min(9999999, pts), name: nm } : null);
       }
       next.prizes = slots;
+    }
+    if (patch && patch.difficulty !== undefined) {
+      next.difficulty = ["leicht", "normal", "schwer"].indexOf(patch.difficulty) !== -1
+        ? patch.difficulty : "normal";
     }
     this.state.game = next;
     this.save();

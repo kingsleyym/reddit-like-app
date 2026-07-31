@@ -309,6 +309,16 @@
         <button class="btn primary block" id="gameStartBtn" style="margin-bottom:8px">Runde starten (QR aufs Display)</button>
         <button class="btn ghost block" id="gameStopBtn" style="margin-bottom:14px">Runde beenden</button>
         <div class="sub" style="margin-bottom:10px"><h3>Status</h3><div class="path" id="gameStatus">–</div></div>
+        <div class="row-between" style="margin-bottom:12px">
+          <span class="lbl">Schwierigkeit</span>
+          <select id="gameDiffSel" style="background:#0d1320;border:1px solid #2a3550;border-radius:8px;color:#fff;padding:8px 10px;width:130px">
+            <option value="leicht">Leicht</option>
+            <option value="normal">Normal</option>
+            <option value="schwer">Schwer</option>
+          </select>
+        </div>
+        <div class="sub" style="margin-bottom:8px"><h3>Spiel-Grafiken (PNG mit Transparenz empfohlen)</h3></div>
+        <div id="skinRows" style="margin-bottom:14px"></div>
         <div class="sub" style="margin-bottom:8px"><h3>Gewinne (Leiste im Spiel, z. B. 3000 = Ayran)</h3></div>
         <div id="prizeRows" style="margin-bottom:8px"></div>
         <button class="btn ghost block" id="prizeSaveBtn" style="margin-bottom:14px">Gewinne speichern</button>
@@ -668,6 +678,41 @@
         }
         prizeRowsBuilt = true;
       }
+      const SKIN_LABELS = { ship: "Schütze (Figur)", enemy: "Gegner leicht", enemy2: "Gegner schwer",
+                            bonus: "Bonus-Ziel", bullet: "Kugel (z. B. Shawarma)" };
+      let skinRowsBuilt = false;
+      function buildSkinRows(skins) {
+        const wrap = $("skinRows");
+        wrap.innerHTML = "";
+        for (const key of Object.keys(SKIN_LABELS)) {
+          const row = document.createElement("div");
+          row.style.cssText = "display:flex;gap:6px;align-items:center;margin-bottom:6px";
+          row.innerHTML =
+            `<span style="flex:1;font-size:13.5px;color:#8b98b8">${SKIN_LABELS[key]}</span>` +
+            `<button class="btn ghost sk-up" style="padding:8px 12px">${skins && skins[key] ? "Bild ✓" : "Bild"}</button>` +
+            `<button class="btn ghost sk-del" style="padding:8px 10px">✕</button>` +
+            `<input type="file" class="sk-file" accept="image/*" style="display:none">`;
+          row.querySelector(".sk-up").onclick = () => row.querySelector(".sk-file").click();
+          row.querySelector(".sk-file").onchange = async (e) => {
+            const f = e.target.files[0]; if (!f) return;
+            const fd = new FormData(); fd.append("img", f);
+            const r = await fetch("/api/game/skin/" + key, { method: "POST", body: fd });
+            toast(r.ok ? "Grafik gespeichert – gilt ab der nächsten Runde" : "Upload fehlgeschlagen");
+            if (r.ok) row.querySelector(".sk-up").textContent = "Bild ✓";
+          };
+          row.querySelector(".sk-del").onclick = async () => {
+            await api("/api/game/skin/" + key + "/delete", {});
+            row.querySelector(".sk-up").textContent = "Bild";
+            toast("Grafik entfernt – Standard-Look aktiv");
+          };
+          wrap.appendChild(row);
+        }
+        skinRowsBuilt = true;
+      }
+      $("gameDiffSel").addEventListener("change", async (e) => {
+        await api("/api/game/config", { difficulty: e.target.value });
+        toast("Schwierigkeit: " + e.target.value + " – gilt ab der nächsten Runde");
+      });
       $("prizeSaveBtn").addEventListener("click", async () => {
         const rows = [...$("prizeRows").children];
         const prizes = rows.map((r) => ({
@@ -695,6 +740,8 @@
           }
           if (document.activeElement !== $("gameModeSel")) $("gameModeSel").value = s.mode || "phone";
           if (!prizeRowsBuilt && s.prizeSlots) buildPrizeRows(s.prizeSlots);
+          if (!skinRowsBuilt) buildSkinRows(s.skins || {});
+          if (document.activeElement !== $("gameDiffSel")) $("gameDiffSel").value = s.difficulty || "normal";
           let txt = "Keine Runde aktiv";
           if (s.active) {
             const st = { invite: "Warte auf Scan (QR auf Bildschirm " + s.screen + ")",

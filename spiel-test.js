@@ -132,6 +132,12 @@ select{width:100%;background:#0d1320;border:1px solid #2a3550;border-radius:8px;
  <h4>GEWINNE (Punkte + Name + Bild)</h4>
  <div id="pzRows"></div>
  <button class="tbtn ghost" id="pzSave">Gewinne speichern</button>
+ <h4>SCHWIERIGKEIT</h4>
+ <select id="selDiff">
+  <option value="leicht">Leicht</option>
+  <option value="normal" selected>Normal</option>
+  <option value="schwer">Schwer</option>
+ </select>
  <h4>FUNNEL-SIMULATION (Verzögerung je Richtung)</h4>
  <select id="selDelay">
   <option value="0">aus (WLAN pur)</option>
@@ -188,6 +194,8 @@ select{width:100%;background:#0d1320;border:1px solid #2a3550;border-radius:8px;
     api("/api/game/config",{mode:e.target.value});};
   document.getElementById("selDelay").onchange=function(e){
     api("/test/delay",{ms:Number(e.target.value)});};
+  document.getElementById("selDiff").onchange=function(e){
+    api("/api/game/config",{difficulty:e.target.value});};
   fetch("/test/delay").then(function(r){return r.json();}).then(function(d){
     document.getElementById("selDelay").value=String(d.ms||0);}).catch(function(){});
   function refresh(){
@@ -213,11 +221,15 @@ select{width:100%;background:#0d1320;border:1px solid #2a3550;border-radius:8px;
     alert("Bild zu groß zum Speichern – wird nur bis zum Neuladen benutzt.");}}
   function readFile(f,k){
     if(!f||f.type.indexOf("image")!==0)return;
+    // 1) An den Server (wie das echte Dashboard) - gilt ab naechster Runde,
+    //    auch fuers Handy.
+    var fd=new FormData();fd.append("img",f);
+    fetch("/api/game/skin/"+k,{method:"POST",body:fd});
+    // 2) Lokal sofort anwenden (Live-Vorschau mitten im Spiel)
     var rd=new FileReader();
     rd.onload=function(){
       var im=new Image();
       im.onload=function(){
-        // auf max. 128px verkleinern, reicht fuers Spiel und bleibt klein
         var c=document.createElement("canvas"),m=Math.min(128/im.width,128/im.height,1);
         c.width=Math.round(im.width*m);c.height=Math.round(im.height*m);
         c.getContext("2d").drawImage(im,0,0,c.width,c.height);
@@ -229,7 +241,9 @@ select{width:100%;background:#0d1320;border:1px solid #2a3550;border-radius:8px;
   document.querySelectorAll(".drop").forEach(function(d){
     var k=d.dataset.k;
     d.addEventListener("click",function(e){
-      if(e.target.className==="x"){delete saved[k];store();apply();return;}
+      if(e.target.className==="x"){delete saved[k];store();apply();
+        fetch("/api/game/skin/"+k+"/delete",{method:"POST",
+          headers:{"Content-Type":"application/json"},body:"{}"});return;}
       fileKey=k;fileInp.click();});
     ["dragenter","dragover"].forEach(function(ev){d.addEventListener(ev,function(e){
       e.preventDefault();d.classList.add("drag");});});

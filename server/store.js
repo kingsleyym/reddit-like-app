@@ -30,7 +30,15 @@ const DEFAULT_STATE = {
   autostart: true,
   maintenance: false,
   // Branding: Name im Dashboard + Boot-Screen der Displays
-  branding: { name: "Kingsley Systems", bootSeconds: 4, logo: null },
+  branding: { name: "Kingsley Systems", bootSeconds: 10, logo: null },
+  // Spiel (Kingsley Invaders): publicBase = oeffentliche Adresse fuer den
+  // QR-Link (Tailscale-Funnel), leer = LAN-Adresse mit Port 8788.
+  // mode: "controller" (Spiel auf dem Display, Handy steuert) oder
+  //       "phone" (Spiel laeuft auf dem Handy, Display spiegelt).
+  //       Standard ist "phone" - unabhaengig von der Internet-Latenz.
+  // prizes: bis zu 4 Gewinnstufen { points, name }; Bilder liegen als
+  //         spielpreis<slot>.<ext> im branding-Ordner.
+  game: { publicBase: "", mode: "phone", prizes: [null, null, null, null] },
   // Samsung-Tizen-Displays: erkannte Geraete, offene Install-Absichten und ein
   // Zaehler, mit dem sich alle Displays per Dashboard neu laden lassen.
   tizen: { devices: [], pending: {}, epoch: 1 },
@@ -132,6 +140,7 @@ class Store {
         maintenance: false,
         tizen: normalizeTizen(parsed.tizen),
         branding: { ...d.branding, ...(parsed.branding || {}) },
+        game: { ...d.game, ...(parsed.game || {}) },
       };
       delete this.state.screensMap;
     } catch (err) {
@@ -231,6 +240,31 @@ class Store {
     }
     if (patch && patch.logo !== undefined) next.logo = patch.logo;
     this.state.branding = next;
+    this.save();
+    return next;
+  }
+
+  setGame(patch) {
+    const cur = this.state.game || {};
+    const next = { ...cur };
+    if (patch && patch.publicBase !== undefined) {
+      next.publicBase = String(patch.publicBase || "").trim().slice(0, 200);
+    }
+    if (patch && patch.mode !== undefined) {
+      next.mode = patch.mode === "controller" ? "controller" : "phone";
+    }
+    if (patch && patch.prizes !== undefined) {
+      const src = Array.isArray(patch.prizes) ? patch.prizes : [];
+      const slots = [];
+      for (let i = 0; i < 4; i++) {
+        const p = src[i];
+        const pts = p ? parseInt(p.points, 10) : 0;
+        const nm = p && typeof p.name === "string" ? p.name.trim().slice(0, 24) : "";
+        slots.push(pts > 0 && nm ? { points: Math.min(9999999, pts), name: nm } : null);
+      }
+      next.prizes = slots;
+    }
+    this.state.game = next;
     this.save();
     return next;
   }

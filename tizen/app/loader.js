@@ -323,7 +323,7 @@
 
     window.MB_NATIVE.start(state.base, state.screen, {
       onStatus: function (msg, detail) {
-        if (!msg) hideSplash();
+        if (!msg) { window.__mbVideoStarted = true; hideSplash(); }
         else showSplash(msg, detail || ("Bildschirm " + state.screen));
       }
     });
@@ -354,6 +354,7 @@
     if (!el.frame.src || el.frame.src === "about:blank") return;
     state.loaded = true;
     if (state.loadTimer) { clearTimeout(state.loadTimer); state.loadTimer = null; }
+    window.__mbVideoStarted = true;
     hideSplash();
     log("Player geladen:", state.lastUrl);
   };
@@ -372,7 +373,7 @@
      Dashboard (Branding), 0 = aus. Laeuft rein lokal aus dem Cache. */
 
   function brandingCached() {
-    var b = { name: "Kingsley Systems", bootSeconds: 4, logo: null };
+    var b = { name: "Kingsley Systems", bootSeconds: 10, logo: null };
     safe(function () {
       var raw = store("branding");
       if (raw) { var j = JSON.parse(raw); if (j && typeof j === "object") b = j; }
@@ -383,11 +384,16 @@
   function applyBrandName(name) {
     safe(function () {
       var t = document.getElementById("splashTitle");
-      if (t) t.textContent = name;
+      if (t) {
+        t.textContent = name;
+        var d = document.createElement("span");
+        d.className = "branddot"; d.textContent = ".";
+        t.appendChild(d);
+      }
     });
   }
 
-  function startBootRain(ms) {
+  function startBootRain() {
     var c = document.getElementById("bootRain");
     if (!c || !c.getContext) return;
     var w = c.clientWidth || window.innerWidth || 1080;
@@ -419,7 +425,7 @@
         drops[i]++;
       }
     }, 95);
-    setTimeout(function () { clearInterval(iv); }, ms);
+    return function () { clearInterval(iv); };
   }
 
   function showBoot() {
@@ -427,7 +433,7 @@
     applyBrandName(b.name || "Kingsley Systems");
 
     var dur = Number(b.bootSeconds);
-    if (!isFinite(dur)) dur = 4;
+    if (!isFinite(dur)) dur = 10;
     if (dur <= 0) return;
 
     var boot = document.getElementById("boot");
@@ -449,7 +455,7 @@
       logo.style.display = "none";
     }
 
-    startBootRain(dur * 1000);
+    var stopRain = startBootRain();
 
     // Tippgeschwindigkeit haengt an der Gesamtdauer.
     var typeMs = Math.max(30, Math.min(65, (dur * 1000 * 0.35) / Math.max(1, name.length)));
@@ -459,12 +465,28 @@
       if (i >= name.length) {
         clearInterval(t);
         cursor.className = "blink";
+        safe(function () { document.getElementById("bootDot").className = "in"; });
         setTimeout(function () { if (logo.style.display !== "none") logo.className = "in"; }, 400);
       }
     }, typeMs);
 
-    setTimeout(function () { boot.className = "on out"; }, Math.max(1300, dur * 1000 - 600));
-    setTimeout(function () { boot.className = ""; clearInterval(t); }, Math.max(1900, dur * 1000));
+    // Ausblenden erst, wenn BEIDES gilt: Mindestdauer erreicht UND das
+    // Video laeuft wirklich. Falls das Video haengt: Deckel bei dur+20s,
+    // damit Fehlermeldungen auf dem Splash sichtbar werden.
+    var t0boot = Date.now();
+    var endIv = setInterval(function () {
+      var el = (Date.now() - t0boot) / 1000;
+      var ready = !!window.__mbVideoStarted;
+      if ((el >= dur && ready) || el >= dur + 20) {
+        clearInterval(endIv);
+        boot.className = "on out";
+        setTimeout(function () {
+          boot.className = "";
+          if (stopRain) stopRain();
+          clearInterval(t);
+        }, 700);
+      }
+    }, 250);
   }
 
   function showSplash(msg, info) {

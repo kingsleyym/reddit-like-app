@@ -294,6 +294,35 @@
       </div>
 
       <div class="card">
+        <h2>Spiel – Kingsley Invaders</h2>
+        <div class="row-between" style="margin-bottom:12px">
+          <span class="lbl">Bildschirm</span>
+          <select id="gameScreenSel" style="background:#0d1320;border:1px solid #2a3550;border-radius:8px;color:#fff;padding:8px 10px;width:110px"></select>
+        </div>
+        <div class="row-between" style="margin-bottom:12px">
+          <span class="lbl">Modus</span>
+          <select id="gameModeSel" style="background:#0d1320;border:1px solid #2a3550;border-radius:8px;color:#fff;padding:8px 10px;width:230px">
+            <option value="phone">Spiel am Handy, Display spiegelt (empfohlen)</option>
+            <option value="controller">Handy steuert, Spiel am Display</option>
+          </select>
+        </div>
+        <button class="btn primary block" id="gameStartBtn" style="margin-bottom:8px">Runde starten (QR aufs Display)</button>
+        <button class="btn ghost block" id="gameStopBtn" style="margin-bottom:14px">Runde beenden</button>
+        <div class="sub" style="margin-bottom:10px"><h3>Status</h3><div class="path" id="gameStatus">–</div></div>
+        <div class="sub" style="margin-bottom:8px"><h3>Gewinne (Leiste im Spiel, z. B. 3000 = Ayran)</h3></div>
+        <div id="prizeRows" style="margin-bottom:8px"></div>
+        <button class="btn ghost block" id="prizeSaveBtn" style="margin-bottom:14px">Gewinne speichern</button>
+        <div class="sub" style="margin-bottom:8px"><h3>Aktions-Logo (z. B. Shawarmery – erscheint auf Banner &amp; Handy)</h3></div>
+        <input type="file" id="gameLogoInp" accept=".png,.jpg,.jpeg,.svg,.webp" style="margin-bottom:8px;color:#8b98b8" />
+        <button class="btn ghost block" id="gameLogoBtn" style="margin-bottom:6px">Aktions-Logo hochladen</button>
+        <button class="btn ghost block" id="gameLogoDelBtn" style="margin-bottom:14px">Aktions-Logo entfernen</button>
+        <div class="sub" style="margin-bottom:8px"><h3>Öffentliche Adresse (Tailscale Funnel)</h3></div>
+        <input id="gamePubInp" placeholder="https://…ts.net (leer = nur im WLAN)" style="background:#0d1320;border:1px solid #2a3550;border-radius:8px;color:#fff;padding:8px 10px;width:100%;box-sizing:border-box;margin-bottom:8px" />
+        <button class="btn ghost block" id="gamePubBtn">Adresse speichern</button>
+        <p class="hint" style="margin-top:10px">Ablauf: Runde starten → auf dem Display erscheint Banner + QR-Code → das erste Handy, das scannt, spielt. <b>„Spiel am Handy"</b> ist die zuverlässigste Variante für Gäste mit mobilen Daten: null Verzögerung beim Spielen, das Display zeigt das Spiel live für alle Zuschauer. <b>„Handy steuert"</b> fühlt sich wie eine Konsole an, braucht aber eine schnelle Verbindung. Ohne Funnel-Adresse funktioniert der QR-Link nur für Handys im selben WLAN. Auf dem PC einmalig das Skript <b>4-spiel-freigeben.bat</b> als Administrator ausführen, dann die angezeigte Funnel-Adresse hier eintragen.</p>
+      </div>
+
+      <div class="card">
         <h2>System</h2>
         <div class="row-between" style="margin-bottom:16px"><span class="lbl">Mit Windows automatisch starten</span><label class="toggle"><input type="checkbox" id="autostartChk" /><span class="track"></span></label></div>
         <div class="row-between" style="margin-bottom:14px"><span class="lbl">Wartungsmodus (Player schließen)</span><label class="toggle"><input type="checkbox" id="maintChk" /><span class="track"></span></label></div>
@@ -461,7 +490,7 @@
         $("brandText").textContent = bname;
         document.title = bname;
         if (document.activeElement !== $("brandNameInp")) $("brandNameInp").value = bname;
-        if (document.activeElement !== $("brandBootInp")) $("brandBootInp").value = (state.branding && state.branding.bootSeconds != null) ? state.branding.bootSeconds : 4;
+        if (document.activeElement !== $("brandBootInp")) $("brandBootInp").value = (state.branding && state.branding.bootSeconds != null) ? state.branding.bootSeconds : 10;
         if (document.activeElement !== $("screenCount")) $("screenCount").value = screenList().length;
         renderTizen();
       }
@@ -611,6 +640,107 @@
         const r = await fetch("/api/branding/logo", { method: "POST", body: fd });
         toast(r.ok ? "Logo hochgeladen" : "Upload fehlgeschlagen");
       });
+      /* --- Spiel: Kingsley Invaders --- */
+      let prizeRowsBuilt = false;
+      function buildPrizeRows(slots) {
+        const wrap = $("prizeRows");
+        wrap.innerHTML = "";
+        for (let i = 0; i < 4; i++) {
+          const s = slots && slots[i] ? slots[i] : { points: "", name: "", hasImg: false };
+          const row = document.createElement("div");
+          row.style.cssText = "display:flex;gap:6px;align-items:center;margin-bottom:6px";
+          row.innerHTML =
+            `<input type="number" min="0" placeholder="Punkte" value="${s.points}" class="pz-pts" ` +
+            `style="background:#0d1320;border:1px solid #2a3550;border-radius:8px;color:#fff;padding:8px;width:80px">` +
+            `<input type="text" maxlength="24" placeholder="Gewinn (z. B. Ayran)" value="${(s.name || "").replace(/"/g, "&quot;")}" class="pz-name" ` +
+            `style="background:#0d1320;border:1px solid #2a3550;border-radius:8px;color:#fff;padding:8px;flex:1;min-width:0">` +
+            `<button class="btn ghost pz-img" data-slot="${i}" style="padding:8px 10px;white-space:nowrap">${s.hasImg ? "Bild ✓" : "Bild"}</button>` +
+            `<input type="file" class="pz-file" accept="image/*" style="display:none">`;
+          row.querySelector(".pz-img").onclick = () => row.querySelector(".pz-file").click();
+          row.querySelector(".pz-file").onchange = async (e) => {
+            const f = e.target.files[0]; if (!f) return;
+            const fd = new FormData(); fd.append("img", f);
+            const r = await fetch("/api/game/prize-img/" + i, { method: "POST", body: fd });
+            toast(r.ok ? "Gewinn-Bild gespeichert" : "Upload fehlgeschlagen");
+            if (r.ok) row.querySelector(".pz-img").textContent = "Bild ✓";
+          };
+          wrap.appendChild(row);
+        }
+        prizeRowsBuilt = true;
+      }
+      $("prizeSaveBtn").addEventListener("click", async () => {
+        const rows = [...$("prizeRows").children];
+        const prizes = rows.map((r) => ({
+          points: Number(r.querySelector(".pz-pts").value) || 0,
+          name: r.querySelector(".pz-name").value.trim(),
+        }));
+        await api("/api/game/config", { prizes });
+        toast("Gewinne gespeichert");
+      });
+      function fillGameScreens() {
+        const sel = $("gameScreenSel");
+        const ids = screenList();
+        const cur = sel.value;
+        if (sel.options.length !== ids.length || [...sel.options].some((o, i) => o.value !== String(ids[i]))) {
+          sel.innerHTML = ids.map((id) => `<option value="${id}">${posName(id)}</option>`).join("");
+          if (cur && ids.includes(cur)) sel.value = cur;
+        }
+      }
+      async function refreshGame() {
+        try {
+          fillGameScreens();
+          const s = await (await fetch("/api/game/status")).json();
+          if (document.activeElement !== $("gamePubInp") && !$("gamePubInp").value) {
+            $("gamePubInp").value = s.publicBase || "";
+          }
+          if (document.activeElement !== $("gameModeSel")) $("gameModeSel").value = s.mode || "phone";
+          if (!prizeRowsBuilt && s.prizeSlots) buildPrizeRows(s.prizeSlots);
+          let txt = "Keine Runde aktiv";
+          if (s.active) {
+            const st = { invite: "Warte auf Scan (QR auf Bildschirm " + s.screen + ")",
+                         claimed: "Handy verbunden – Spieler macht sich bereit",
+                         running: "Runde läuft" + (s.player ? " – " + s.player.name : ""),
+                         over: "Runde vorbei" }[s.state] || s.state;
+            txt = st + (s.joinUrl ? "\n" + s.joinUrl : "");
+          } else if (s.lastScore) {
+            txt = "Letzte Runde: " + (s.lastScore.name || "?") + " – " + s.lastScore.score + " Punkte";
+          }
+          $("gameStatus").textContent = txt;
+        } catch (_) {}
+      }
+      $("gameStartBtn").addEventListener("click", async () => {
+        const r = await api("/api/game/start", { screen: $("gameScreenSel").value });
+        if (r.error) toast(r.error);
+        else toast("QR-Code ist auf Bildschirm " + r.screen);
+        refreshGame();
+      });
+      $("gameStopBtn").addEventListener("click", async () => {
+        await api("/api/game/stop", {});
+        toast("Runde beendet");
+        refreshGame();
+      });
+      $("gamePubBtn").addEventListener("click", async () => {
+        await api("/api/game/config", { publicBase: $("gamePubInp").value.trim() });
+        toast("Adresse gespeichert");
+      });
+      $("gameLogoBtn").addEventListener("click", async () => {
+        const f = $("gameLogoInp").files[0];
+        if (!f) { toast("Erst eine Datei wählen"); return; }
+        const fd = new FormData(); fd.append("logo", f);
+        const r = await fetch("/api/game/logo", { method: "POST", body: fd });
+        toast(r.ok ? "Aktions-Logo hochgeladen" : "Upload fehlgeschlagen");
+      });
+      $("gameLogoDelBtn").addEventListener("click", async () => {
+        await api("/api/game/logo/delete", {});
+        toast("Aktions-Logo entfernt");
+      });
+      $("gameModeSel").addEventListener("change", async (e) => {
+        await api("/api/game/config", { mode: e.target.value });
+        toast(e.target.value === "phone" ? "Modus: Spiel am Handy (Display spiegelt)" : "Modus: Handy steuert, Spiel am Display");
+      });
+      setInterval(refreshGame, 5000);
+      refreshGame();
+
       $("autostartChk").addEventListener("change", async (e) => { await api("/api/autostart", { enabled: e.target.checked }); toast(e.target.checked ? "Autostart an" : "Autostart aus"); });
       $("maintChk").addEventListener("change", async (e) => { await api("/api/maintenance", { enabled: e.target.checked }); toast(e.target.checked ? "Wartungsmodus an" : "Wartungsmodus aus"); });
       $("openFolderBtn").addEventListener("click", async () => { await api("/api/open-folder", {}); toast("Ordner wird geöffnet"); });

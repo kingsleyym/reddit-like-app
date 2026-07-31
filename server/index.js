@@ -8,6 +8,7 @@ const express = require("express");
 const multer = require("multer");
 const { WebSocketServer } = require("ws");
 const { createTizenRoutes, ONLINE_MS } = require("./tizen");
+const { createGame } = require("./game");
 
 const SLOTS = ["left", "middle", "right"];
 
@@ -454,6 +455,8 @@ function startServer(opts) {
         ws.role = msg.role;
         ws.slot = msg.slot;
         broadcastStatus();
+      } else if (typeof msg.type === "string" && msg.type.indexOf("game-") === 0) {
+        game.onSocketMessage(ws, msg);
       } else if (msg.type === "playing" && screenIds().indexOf(msg.slot) !== -1) {
         nowPlaying[msg.slot] = msg.videoId || null;
         broadcastStatus();
@@ -467,6 +470,28 @@ function startServer(opts) {
     ws.send(JSON.stringify({ type: "live", screens: livePlaylists() }));
     ws.send(JSON.stringify({ type: "status", players: connectedStatus(), playing: nowPlaying }));
   });
+
+  // --- Spiel (Kingsley Invaders) -------------------------------------------
+  // Handy-Oberflaeche auf eigenem Port 8788 (nur der wird per Tailscale-
+  // Funnel oeffentlich); Dashboard-API unter /api/game auf dem Hauptport.
+  function lanBase() {
+    const ifaces = os.networkInterfaces();
+    let lan = null, any = null;
+    for (const list of Object.values(ifaces)) {
+      for (const i of list || []) {
+        if (i.family !== "IPv4" || i.internal) continue;
+        const o = i.address.split(".").map(Number);
+        const isTailscale = o[0] === 100 && o[1] >= 64 && o[1] <= 127;
+        if (!any) any = i.address;
+        if (!isTailscale && !lan) lan = i.address;
+      }
+    }
+    return "http://" + (lan || any || "localhost");
+  }
+  const game = createGame({ store, wss, screenIds, getLanBase: lanBase,
+    brandingDir, mainPort: port });
+  app.use("/api/game", game.router);
+  game.listenPublic(8788);
 
   function broadcast(msg) {
     const data = JSON.stringify(msg);

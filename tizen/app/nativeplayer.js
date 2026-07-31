@@ -36,7 +36,7 @@
   "use strict";
 
   var LOG_PREFIX = "[MB-native]";
-  var BUILD_TAG = "nativ-T12-part";   // sichtbare Kennung, damit klar ist, welcher Build laeuft
+  var BUILD_TAG = "nativ-T13-spiel";   // sichtbare Kennung, damit klar ist, welcher Build laeuft
   var STORAGE = "wgt-private";      // privater, beschreibbarer App-Speicher
   var SUBDIR = "media";             // darin legen wir die Videos ab
   var RETRY_MS = 4000;              // Wartezeit vor erneutem Verbindungsversuch
@@ -447,8 +447,12 @@
     var quelle = local || url;
 
     log(local ? "spiele lokal:" : "streame vom Server:", quelle);
-    status("Video startet … (" + BUILD_TAG + ")",
-           (local ? "lokal: " : "Server: ") + quelle);
+    // Nur vor dem allerersten Video anzeigen - bei Uebergaengen zwischen
+    // Clips darf NIE ein Splash/Boot-Element aufblitzen.
+    if (!state.playing) {
+      status("Video startet … (" + BUILD_TAG + ")",
+             (local ? "lokal: " : "Server: ") + quelle);
+    }
 
     avPlayFile(quelle, function () {
       // Stream zu Ende - fortschalten oder wiederholen.
@@ -553,6 +557,11 @@
         setPlaylist(msg.screens[state.screen]);
       } else if (msg.type === "state" && msg.state && msg.state.live) {
         setPlaylist(msg.state.live[state.screen]);
+      } else if (typeof msg.type === "string" && msg.type.indexOf("game-") === 0) {
+        // Spiel-Nachrichten an das Spielmodul weiterreichen (falls geladen).
+        if (global.MB_GAME && typeof global.MB_GAME.onMessage === "function") {
+          safe(function () { global.MB_GAME.onMessage(msg); });
+        }
       }
     };
 
@@ -619,11 +628,37 @@
     };
   }
 
+  /* --------- Schnittstelle fuer das Spiel (game.js) ---------------------- */
+
+  // Nachricht an den Server schicken (Slot wird automatisch ergaenzt).
+  function send(obj) {
+    safe(function () {
+      if (state.ws && state.ws.readyState === 1) {
+        obj = obj || {};
+        if (!obj.slot) obj.slot = state.screen;
+        state.ws.send(JSON.stringify(obj));
+      }
+    });
+  }
+
+  // Video anhalten, damit das Spiel Vollbild hat (Dekoder freigeben).
+  function gamePause() {
+    avStop();
+  }
+
+  // Nach dem Spiel: aktuelles Video wieder starten.
+  function gameResume() {
+    if (state.playlist.length) playCurrent();
+  }
+
   global.MB_NATIVE = {
     isAvailable: isAvailable,
     start: start,
     stop: stop,
     info: info,
+    send: send,
+    gamePause: gamePause,
+    gameResume: gameResume,
     // für Tests aus der Konsole
     _nextStep: nextStep
   };

@@ -1,0 +1,48 @@
+{
+  "videos": [],
+  "screens": [
+    "left",
+    "middle",
+    "right"
+  ],
+  "scenes": {
+    "day": {
+      "left": [],
+      "middle": [],
+      "right": []
+    },
+    "night": {
+      "left": [],
+      "middle": [],
+      "right": []
+    }
+  },
+  "liveScene": "day",
+  "autoSwitch": {
+    "enabled": false,
+    "dayStart": "11:00",
+    "nightStart": "17:00"
+  },
+  "schedule": {
+    "enabled": false,
+    "sleepTime": "23:30",
+    "wakeTime": "08:30"
+  },
+  "displayMapping": {},
+  "autostart": true,
+  "maintenance": false,
+  "branding": {
+    "name": "Kingsley Systems",
+    "bootSeconds": 10,
+    "logo": null
+  },
+  "game": {
+    "publicBase": "",
+    "mode": "phone"
+  },
+  "tizen": {
+    "devices": [],
+    "pending": {},
+    "epoch": 1
+  }
+}

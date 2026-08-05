@@ -1,0 +1,44 @@
+{
+  "version": 2,
+  "config": {
+    "firma": "Shawarmery",
+    "chefPin": {
+      "salt": "f171f82c8a661142",
+      "hash": "b865767a9b8355e7412a19225ca99087ab5e34f4f631de9a2b8dc6397dd6cc9e"
+    },
+    "oeffentlicheAdresse": "",
+    "requirePresence": true,
+    "presenceMinutes": 10,
+    "oeffnungAktiv": false,
+    "oeffnungVon": "09:00",
+    "oeffnungBis": "23:00",
+    "oeffnungPuffer": 60,
+    "autoBreak": false,
+    "terminalRequireCode": false,
+    "autoOutHours": 12,
+    "autoOutTime": "",
+    "maxShiftHours": 14,
+    "fernAktiv": false,
+    "fernPfad": "",
+    "fernPass": null,
+    "fernSeit": 0,
+    "secret": "d8ab059de176ceaebd54f660a199511b61bab1419f3aba9d"
+  },
+  "locations": [
+    {
+      "id": "loc_e2fa2b1f4834",
+      "name": "Laden 1",
+      "token": "UH7SZQ7BZ8DK"
+    }
+  ],
+  "employees": [],
+  "events": [],
+  "audit": [
+    {
+      "ts": 1785918033860,
+      "what": "chef-pin",
+      "detail": "Chef-PIN geändert",
+      "by": "setup"
+    }
+  ]
+}

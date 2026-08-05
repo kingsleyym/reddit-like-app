@@ -513,7 +513,7 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
           name: store.state.config.firma + " Zeit",
           short_name: store.state.config.firma || "Zeit",
           start_url: "/terminal", scope: "/", display: "standalone",
-          background_color: "#0f1115", theme_color: "#0f1115",
+          background_color: "#0B0D12", theme_color: "#0B0D12",
           icons: [{ src: "/icon.png", sizes: "512x512", type: "image/png", purpose: "any maskable" }],
         });
       }

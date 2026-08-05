@@ -30,6 +30,9 @@ const TERMINAL_HTML = `<!DOCTYPE html>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Stempeluhr">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="manifest" href="/app.webmanifest">
 <title>Stempeluhr – Terminal</title>
 <style>
 ${TOKENS_CSS}

@@ -33,6 +33,8 @@ const CHEF_HTML = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0B0D12" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#F4F4F6" media="(prefers-color-scheme: light)">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="icon" type="image/png" href="/icon.png">
 <title>Zeiten – Chef</title>
 <style>
 ${TOKENS_CSS}

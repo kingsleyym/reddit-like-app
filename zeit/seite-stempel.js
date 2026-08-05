@@ -21,6 +21,9 @@ const STEMPEL_HTML = `<!DOCTYPE html>
 <meta name="theme-color" content="#F4F4F6" media="(prefers-color-scheme: light)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="manifest" href="/app.webmanifest">
 <title>Stempeluhr</title>
 <style>
 ${TOKENS_CSS}

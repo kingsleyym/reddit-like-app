@@ -325,6 +325,13 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
     if (!store.state.config.requirePresence) return { ok: true, locId: null, terminal: false };
     return { ok: false, locId: null, terminal: false };
   }
+  // Terminal-Code direkt im Aufruf (?tok=... bzw. im Body): der Weg der
+  // Home-App, die keine Cookies mitbringt. Gilt als Terminal des Standorts.
+  function ortMitToken(req, tokWert) {
+    const loc = store.locationByToken(String(tokWert || "").trim());
+    if (loc) return { ok: true, locId: loc.id, terminal: true };
+    return ort(req);
+  }
 
   // Adresse, die auf die NFC-Aufkleber und ins iPad kommt. Ist eine
   // oeffentliche Adresse hinterlegt (Tailscale-Funnel), gilt die - sonst
@@ -434,16 +441,29 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
 
     try {
       /* --- iPad dauerhaft freischalten --- */
+      /*
+       * Die volle Adresse /terminal/<CODE> IST die App - sie bleibt in der
+       * Adresszeile stehen und wird genau so zum Home-Bildschirm gelegt.
+       * Kein Umleiten, kein Verstecken: eine Home-App hat auf dem iPad
+       * einen EIGENEN, leeren Cookie-Speicher - eine Berechtigung, die nur
+       * im Cookie steckt, waere beim ersten Start aus der App weg. Deshalb
+       * traegt die Seite ihren Code selbst und schickt ihn bei jedem
+       * API-Aufruf mit (?tok=...). Das Cookie gibt es zusaetzlich, damit
+       * /terminal ohne Code (alte Lesezeichen) weiter funktioniert.
+       */
       if (method === "GET" && p.startsWith("/terminal/")) {
         const loc = store.locationByToken(decodeURIComponent(p.slice(10)));
-        if (!loc) return html(res, fehlerSeite("Dieser Code ist unbekannt.",
-          "Bitte im Chef-Bereich nachsehen."));
+        if (!loc) {
+          // Alter Link (Code wurde neu vergeben), aber das Geraet ist noch
+          // per Cookie bekannt: weiterlaufen lassen statt aussperren.
+          if (readOrt(cookies(req).zeit_ort)) return html(res, TERMINAL_HTML);
+          return html(res, fehlerSeite("Dieser Code ist unbekannt.",
+            "Bitte im Chef-Bereich nachsehen."));
+        }
         res.setHeader("Set-Cookie", "zeit_ort=" +
           encodeURIComponent(makeOrt(loc.id, 365 * 24 * 60, true)) +
           "; Path=/; Max-Age=" + (365 * 24 * 3600) + "; SameSite=Lax");
-        // Auf /terminal weiterleiten: dort loesen die relativen Adressen der
-        // Seite (api/…, fotos/…) korrekt auf die Wurzel auf.
-        return redirect(res, "../terminal");
+        return html(res, TERMINAL_HTML);
       }
       if (method === "GET" && p === "/terminal") {
         const o = ort(req);
@@ -510,10 +530,15 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
         return res.end(b);
       }
       if (method === "GET" && p === "/app.webmanifest") {
+        // Traegt die Seite ihren Terminal-Code mit (?t=...), zeigt auch die
+        // installierte App (Android) dauerhaft auf die volle Adresse.
+        const t = url.searchParams.get("t") || "";
+        const start = store.locationByToken(t)
+          ? "/terminal/" + encodeURIComponent(t) : "/terminal";
         return json(res, {
           name: store.state.config.firma + " Zeit",
           short_name: store.state.config.firma || "Zeit",
-          start_url: "/terminal", scope: "/", display: "standalone",
+          start_url: start, scope: "/", display: "standalone",
           background_color: "#0B0D12", theme_color: "#0B0D12",
           icons: [{ src: "/icon.png", sizes: "512x512", type: "image/png", purpose: "any maskable" }],
         });
@@ -579,7 +604,7 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
        * soll das iPad nicht 47 graue Kacheln ohne Bezug zeigen.
        */
       if (method === "GET" && p === "/api/terminal/liste") {
-        const o = ort(req);
+        const o = ortMitToken(req, url.searchParams.get("tok"));
         if (!o.ok) return json(res, { fehler: "kein-zugang" });
         const heute = dayKey(Date.now());
         const jetztHM = hhmm(Date.now());
@@ -616,12 +641,12 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
       }
 
       if (method === "POST" && p === "/api/terminal/stempeln") {
-        const o = ort(req);
+        const b = await readBody(req);
+        const o = ortMitToken(req, b.tok);
         if (!o.ok) return json(res, { ok: false, fehler: "Kein Zugang – bitte Aufkleber antippen" });
         const auf = store.darfStempeln(null, o.locId);
         if (!auf.ok) return json(res, { ok: false,
           fehler: "Außerhalb der Öffnungszeiten (" + auf.von + "–" + auf.bis + ")" });
-        const b = await readBody(req);
         const emp = store.employee(b.empId);
         if (!emp || emp.active === false) return json(res, { ok: false, fehler: "Unbekannt" });
         const codeNoetig = !o.terminal || !!store.state.config.terminalRequireCode;
@@ -794,7 +819,7 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
           return json(res, { ok: false, fehler: "4 bis 8 Ziffern." });
         store.setChefPin(b.pin, "setup");
         res.setHeader("Set-Cookie", "zeit_chef=" + newChefSession(false) +
-          "; Path=/; HttpOnly; SameSite=Lax");
+          "; Path=/; HttpOnly; SameSite=Lax; Max-Age=" + (12 * 3600));
         return json(res, { ok: true });
       }
       if (method === "POST" && p === "/api/chef/login") {
@@ -815,8 +840,11 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
             wartenSek: e.bis > Date.now() ? Math.ceil((e.bis - Date.now()) / 1000) : 0 });
         }
         erfolg(req);
+        // Mit Laufzeit: Eine Home-App startet jedes Mal "frisch" - ein
+        // Sitzungs-Cookie ohne Max-Age waere dort sofort wieder weg.
         res.setHeader("Set-Cookie", "zeit_chef=" + newChefSession(oeffentlich) +
-          "; Path=/; HttpOnly; SameSite=Lax");
+          "; Path=/; HttpOnly; SameSite=Lax; Max-Age=" +
+          (oeffentlich ? 3 * 3600 : 12 * 3600));
         return json(res, { ok: true });
       }
       if (method === "POST" && p === "/api/chef/logout") {

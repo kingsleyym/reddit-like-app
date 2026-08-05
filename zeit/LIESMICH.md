@@ -398,10 +398,17 @@ Das Skript prüft Node.js (installiert es bei Bedarf), richtet den Autostart ein
 | Chef von unterwegs (Internet) | Adresse + `/f/<geheim>` — einmal pro Gerät |
 
 **iPad einrichten:** Die Terminal-Adresse in Safari öffnen → *Teilen* → *Zum
-Home-Bildschirm*. Danach läuft die Stempeluhr im Vollbild ohne Browser-Leiste
-und das Gerät bleibt dauerhaft freigeschaltet. Für Dauerbetrieb außerdem in den
+Home-Bildschirm*. Danach läuft die Stempeluhr im Vollbild ohne Browser-Leiste.
+Die volle Adresse (`…/terminal/<CODE>`) **bleibt dabei genau so stehen** — sie
+ist der Schlüssel des Geräts und funktioniert auch aus der Home-App heraus
+(die hat auf dem iPad einen eigenen, leeren Cookie-Speicher; deshalb trägt die
+Seite ihren Code selbst in der Adresse). Für Dauerbetrieb außerdem in den
 iPad-Einstellungen *Automatische Sperre → Nie* setzen und das iPad am Strom
 lassen.
+
+Auch der **Chef-Bereich** lässt sich als Home-App ablegen (öffnet im
+Vollbild); die Anmeldung hält dort 12 Stunden, danach fragt er wieder nach
+der PIN.
 
 Den genauen NFC-Link zeigt der Chef-Bereich unter *Einstellungen* — dort gibt es
 auch den QR-Code zum Ausdrucken.

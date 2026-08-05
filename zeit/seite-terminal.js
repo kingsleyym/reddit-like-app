@@ -159,6 +159,22 @@ function bildHtml(p){return p.photo?'<img src="/fotos/'+esc(p.photo)+'">':esc(in
 var leute=[],cfg={},zurueckTimer=null;
 
 /*
+ * Der Terminal-Code steckt in der Adresse (/terminal/<CODE>) und wird bei
+ * jedem Aufruf mitgeschickt. So funktioniert die Seite auch als Home-App:
+ * die hat auf dem iPad einen eigenen, leeren Cookie-Speicher - die Adresse
+ * hat sie aber immer dabei.
+ */
+var TOK=(function(){
+ var m=location.pathname.match(/^\\/terminal\\/(.+)$/);
+ return m?decodeURIComponent(m[1]):"";
+})();
+function tokQ(){return TOK?("?tok="+encodeURIComponent(TOK)):"";}
+if(TOK){
+ var mf=document.querySelector('link[rel="manifest"]');
+ if(mf)mf.href="/app.webmanifest?t="+encodeURIComponent(TOK);
+}
+
+/*
  * Code merken - NUR am privaten Handy!
  * ------------------------------------
  * Das iPad im Laden ist ein GETEILTES Geraet. Wuerde es sich den Code merken,
@@ -186,7 +202,7 @@ function uhr(){
 setInterval(uhr,1000);uhr();
 
 function laden(){
- fetch("/api/terminal/liste").then(function(r){return r.json();}).then(function(d){
+ fetch("/api/terminal/liste"+tokQ()).then(function(r){return r.json();}).then(function(d){
   if(d.fehler){document.body.innerHTML='<div style="padding:40px;text-align:center">'+
    '<div style="font-size:54px">📍</div>'+
    '<h2>Bitte am Eingang antippen</h2>'+
@@ -320,7 +336,8 @@ function codeAbfrage(p,fehlerText){
 }
 function stempeln(p,code){
  fetch("/api/terminal/stempeln",{method:"POST",headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({empId:p.empId,code:code})}).then(function(r){return r.json();})
+  body:JSON.stringify({empId:p.empId,code:code,tok:TOK||undefined})})
+ .then(function(r){return r.json();})
  .then(function(r){
   if(!r.ok){
    if(r.codeFalsch){vergessen();codeAbfrage(p,"Code stimmt nicht");return;}

@@ -33,6 +33,9 @@ const CHEF_HTML = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0B0D12" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#F4F4F6" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Zeiten Chef">
 <link rel="apple-touch-icon" href="/icon.png">
 <link rel="icon" type="image/png" href="/icon.png">
 <title>Zeiten – Chef</title>
@@ -888,11 +891,13 @@ function zDev(c){
    '<button class="btn klein g" onclick="neuerToken(\\''+l.id+'\\')">Sticker-Code neu</button>'+
    '</div></div>';
  });
- h+='<div class="hint"><b>Der Sticker-Code ist fest</b> und ändert sich nie von '+
-  'allein — nur die Adresse dahinter wechselt bei jedem Antippen automatisch. '+
-  '„Sticker-Code neu“ ist der Notfall-Knopf, falls ein Code kursiert: danach '+
-  'müssen alle Aufkleber dieses Ladens neu beschrieben werden. <b>Das iPad läuft '+
-  'weiter</b> — seine Berechtigung steckt im Gerät, nicht in der Adresse.</div></div>';
+ h+='<div class="hint"><b>Die iPad-Adresse bleibt genau so stehen</b> — sie ist '+
+  'der Schlüssel des Geräts und wird als Home-App gespeichert; kein Mitarbeiter '+
+  'bekommt sie zu sehen. Der Sticker-Code ist fest, nur die Adresse dahinter '+
+  'wechselt bei jedem Antippen automatisch. „Sticker-Code neu“ ist der '+
+  'Notfall-Knopf, falls ein Code kursiert: danach Aufkleber neu beschreiben und '+
+  'neue iPads mit dem neuen Link einrichten (ein bereits eingerichtetes iPad '+
+  'läuft übergangsweise weiter).</div></div>';
 
  /* ---- Chef von unterwegs (offenes Internet) ---- */
  var f=daten.fern||{};

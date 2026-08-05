@@ -4,7 +4,8 @@
  * Kingsley Zeit – Schichtplan
  * ===========================
  * Wird in die Chef-Seite eingesetzt (eigene Datei, damit beides ueberschaubar
- * bleibt) und benutzt deren Helfer: $, esc, api, get, modal, zu, toast.
+ * bleibt) und benutzt deren Helfer: $, esc, api, get, modal, zu, toast,
+ * badgesZeichnen und die Bausteine aus design.js.
  *
  * Zwei Bedienarten, EIN Datenmodell:
  *
@@ -17,44 +18,51 @@
  *
  * Das Ziehen ist bewusst selbst gebaut (Pointer-Events) statt mit dem
  * HTML5-Drag: nur so funktioniert es mit Maus UND Finger gleich gut.
+ *
+ * Dazu unten: Soll gegen Ist fuer die angezeigte Woche - wer sollte da sein,
+ * wer war es wirklich.
  */
 
 const PLAN_CSS = `
 #tPlan{padding-bottom:40px}
 .pkopf{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.pnav{display:flex;align-items:center;gap:4px;background:var(--fl);border:1px solid var(--li);
+.pnav{display:flex;align-items:center;gap:2px;background:var(--fl);border:1px solid var(--li);
  border-radius:11px;padding:3px}
-.pnav button{background:none;border:0;color:var(--txt);font-size:17px;width:34px;height:32px;
- border-radius:8px;cursor:pointer}
-.pnav button:hover{background:rgba(255,255,255,.07)}
-.ptitel{font-weight:650;font-size:15px;min-width:150px;text-align:center}
+.pnav button{background:none;border:0;color:var(--txt);font-size:16px;width:34px;height:32px;
+ border-radius:8px}
+.pnav button:hover{background:var(--fl2)}
+.ptitel{font-weight:650;font-size:14.5px;min-width:150px;text-align:center;
+ font-variant-numeric:tabular-nums}
 .pspace{flex:1}
-.pverBtn{background:var(--o);color:#111;border:0;border-radius:11px;padding:9px 15px;
- font-weight:700;font-size:13.5px;cursor:pointer}
-.pverBtn[disabled]{background:var(--fl);color:var(--mut);border:1px solid var(--li);cursor:default}
+.pverBtn{background:var(--o);color:#fff;border:0;border-radius:11px;padding:9px 15px;
+ font-weight:650;font-size:13px}
+.pverBtn[disabled]{background:var(--fl);color:var(--mut);border:1px solid var(--li);
+ cursor:default}
 .pinfo{font-size:12.5px;color:var(--mut);margin:-4px 0 12px}
 
 /* ---- Vorlagenleiste ---- */
 .vleiste{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:13px;
- background:var(--fl);border:1px solid var(--li);border-radius:13px;padding:9px}
+ background:var(--fl);border:1px solid var(--li);border-radius:13px;padding:9px;
+ box-shadow:var(--schatten)}
 .vchip{display:flex;align-items:center;gap:7px;background:var(--fl2);border:1px solid var(--li);
  border-radius:10px;padding:7px 11px;font-size:12.5px;cursor:grab;user-select:none;
- touch-action:none}
+ touch-action:none;font-weight:550}
 .vchip:active{cursor:grabbing}
 .vpunkt{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
-.vzeit{color:var(--mut);font-size:11.5px}
-.vneu{border-style:dashed;color:var(--mut);cursor:pointer}
+.vzeit{color:var(--mut);font-size:11.5px;font-weight:400}
+.vneu{border-style:dashed;color:var(--mut);cursor:pointer;font-weight:550}
+.vneu:hover{color:var(--txt);border-color:var(--li2)}
 
 /* ---- Wochenraster (grosser Bildschirm) ---- */
 .pgitter{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
 .pg{display:grid;grid-template-columns:142px repeat(7,minmax(100px,1fr));gap:5px;min-width:830px}
 /* Der Plan darf breiter sein als der Rest der Seite - eine Woche soll ohne
    Schieben auf den Bildschirm passen. */
-@media (min-width:1060px){
- #tPlan{width:calc(100vw - 40px);max-width:1280px;margin-left:50%;transform:translateX(-50%)}
+@media (min-width:1240px){
+ #tPlan{width:calc(100vw - 285px);max-width:1320px;margin-left:50%;transform:translateX(-50%)}
 }
-.pgk{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;
- padding:0 0 5px 2px}
+.pgk{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em;
+ padding:0 0 5px 2px;font-weight:650}
 .pgk.heute{color:var(--o)}
 .pgp{display:flex;align-items:center;gap:8px;padding:9px 8px;background:var(--fl);
  border:1px solid var(--li);border-radius:11px;min-height:52px}
@@ -62,71 +70,88 @@ const PLAN_CSS = `
 .pgp .st{font-size:11px;color:var(--mut)}
 .zelle{background:var(--fl);border:1px solid var(--li);border-radius:11px;min-height:52px;
  padding:4px;display:flex;flex-direction:column;gap:4px}
-.zelle.wend{background:rgba(255,255,255,.015)}
-.zelle.ziel{outline:2px dashed var(--o);outline-offset:-2px;background:rgba(255,122,26,.09)}
+.zelle.wend{background:var(--fl2)}
+.zelle.ziel{outline:2px dashed var(--o);outline-offset:-2px;background:var(--o-weich)}
 .zelle .plus{opacity:0;font-size:17px;color:var(--mut);text-align:center;line-height:42px;
  cursor:pointer;border-radius:8px}
 .zelle:hover .plus{opacity:.5}
-.zelle .plus:hover{opacity:1;background:rgba(255,255,255,.05)}
-.zoffen{background:rgba(255,122,26,.05);border-color:rgba(255,122,26,.25)}
+.zelle .plus:hover{opacity:1;background:var(--fl2)}
+.zoffen{background:var(--o-weich);border-color:var(--o-rand)}
 
 .sch{border-radius:9px;padding:5px 7px 6px;font-size:12px;line-height:1.25;cursor:grab;
- user-select:none;touch-action:none;border-left:3px solid #EB5A21;background:var(--fl2);
+ user-select:none;touch-action:none;border-left:3px solid var(--o);background:var(--fl2);
  border-top:1px solid var(--li);border-right:1px solid var(--li);border-bottom:1px solid var(--li)}
 .sch:active{cursor:grabbing}
-.sch .z{font-weight:650}
+.sch .z{font-weight:650;font-variant-numeric:tabular-nums}
 .sch .n{color:var(--mut);font-size:11px;margin-top:1px;white-space:nowrap;overflow:hidden;
  text-overflow:ellipsis}
 .sch.frei{border-left-color:var(--mut);border-style:dashed}
 .sch.neu::after{content:"neu";float:right;font-size:9px;color:var(--o);font-weight:700;
  letter-spacing:.04em}
 .sch.zieht{opacity:.35}
-.geist{position:fixed;z-index:900;pointer-events:none;opacity:.92;
- box-shadow:0 12px 30px rgba(0,0,0,.5);transform:rotate(-1.5deg)}
+.geist{position:fixed;z-index:900;pointer-events:none;opacity:.94;
+ box-shadow:0 14px 34px rgba(0,0,0,.35);transform:rotate(-1.5deg)}
 
 /* ---- Tagesliste (Handy) ---- */
 .pliste{display:none}
-.ptag{background:var(--fl);border:1px solid var(--li);border-radius:14px;padding:12px;
- margin-bottom:10px}
+.ptag{background:var(--fl);border:1px solid var(--li);border-radius:14px;padding:13px;
+ margin-bottom:10px;box-shadow:var(--schatten)}
 .ptag h4{margin:0 0 9px;font-size:13.5px;display:flex;align-items:center;gap:8px}
 .ptag h4 .b{margin-left:auto;font-size:11.5px;color:var(--mut);font-weight:500}
-.ptag.heute{border-color:rgba(255,122,26,.45)}
-.preihe{display:flex;align-items:center;gap:10px;padding:8px;border-radius:11px;
+.ptag.heute{border-color:var(--o-rand)}
+.preihe{display:flex;align-items:center;gap:10px;padding:9px;border-radius:11px;
  background:var(--fl2);border:1px solid var(--li);margin-bottom:7px;cursor:pointer}
 .preihe:last-child{margin-bottom:0}
-.preihe .bal{width:4px;align-self:stretch;border-radius:3px;background:#EB5A21;flex:0 0 auto}
+.preihe .bal{width:4px;align-self:stretch;border-radius:3px;background:var(--o);flex:0 0 auto}
 .preihe .nm{font-size:13.5px;font-weight:600}
-.preihe .zt{font-size:12px;color:var(--mut)}
-.preihe .re{margin-left:auto;text-align:right;font-size:12px;color:var(--mut)}
+.preihe .zt{font-size:12px;color:var(--mut);font-variant-numeric:tabular-nums}
+.preihe .re{margin-left:auto;text-align:right;font-size:12px;color:var(--mut);
+ font-variant-numeric:tabular-nums}
 .pleer{color:var(--mut);font-size:12.5px;padding:4px 2px}
-.pplus{width:100%;background:var(--fl2);border:1px dashed var(--li);color:var(--mut);
- border-radius:11px;padding:10px;font-size:13px;cursor:pointer;margin-top:3px}
+.pplus{width:100%;background:var(--fl2);border:1px dashed var(--li2);color:var(--mut);
+ border-radius:11px;padding:10px;font-size:13px;margin-top:3px}
+.pplus:hover{color:var(--txt);border-color:var(--mut)}
 
 /* ---- Meldungen ---- */
 .mkarten{margin-top:18px}
 .mkart{display:flex;align-items:center;gap:11px;background:var(--fl);border:1px solid var(--li);
  border-left:3px solid var(--o);border-radius:13px;padding:12px;margin-bottom:9px}
 .mkart .txt{flex:1;min-width:0}
-.mkart .t1{font-size:13.5px;font-weight:600}
-.mkart .t2{font-size:12px;color:var(--mut);margin-top:2px}
-.mkart .btns{display:flex;gap:6px}
+.mkart .t1{font-size:13.5px;font-weight:600;overflow-wrap:anywhere}
+.mkart .t2{font-size:12px;color:var(--mut);margin-top:2px;overflow-wrap:anywhere}
+.mkart .btns{display:flex;gap:6px;flex:0 0 auto}
 .mini2{background:var(--fl2);border:1px solid var(--li);color:var(--txt);border-radius:9px;
- padding:7px 11px;font-size:12.5px;cursor:pointer}
-.mini2.ja{background:var(--o);color:#111;border-color:var(--o);font-weight:650}
+ padding:7px 11px;font-size:12.5px;font-weight:550}
+.mini2.ja{background:var(--o);color:#fff;border-color:var(--o);font-weight:650}
+
+/* ---- Soll gegen Ist ---- */
+.sollist{margin-top:18px}
+.sirow{display:flex;align-items:center;gap:10px;padding:9px 2px;
+ border-bottom:1px solid var(--li);font-size:13px}
+.sirow:last-child{border-bottom:none}
+.sirow .nm{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;
+ white-space:nowrap}
+.sirow .w{width:74px;text-align:right;font-variant-numeric:tabular-nums;color:var(--mut)}
+.sirow .diff{width:64px;text-align:right;font-variant-numeric:tabular-nums;font-weight:650}
+.sikopf{display:flex;gap:10px;padding:2px;font-size:10px;color:var(--mut);
+ text-transform:uppercase;letter-spacing:.09em;font-weight:650}
+.sikopf .nm{flex:1}
+.sikopf .w{width:74px;text-align:right}
+.sikopf .diff{width:64px;text-align:right}
 
 /* ---- Formular im Fenster ---- */
 .frow{display:flex;gap:9px}
 .frow>div{flex:1}
 .tagpick{display:flex;gap:5px;flex-wrap:wrap;margin:4px 0 2px}
 .tagpick button{flex:1;min-width:38px;background:var(--fl2);border:1px solid var(--li);
- color:var(--mut);border-radius:9px;padding:9px 0;font-size:12.5px;cursor:pointer}
-.tagpick button.an{background:var(--o);color:#111;border-color:var(--o);font-weight:700}
+ color:var(--mut);border-radius:9px;padding:9px 0;font-size:12.5px;font-weight:600}
+.tagpick button.an{background:var(--o);color:#fff;border-color:var(--o);font-weight:700}
 
 @media (max-width:900px){
  .pgitter{display:none}
  .pliste{display:block}
  /* Am Handy steht die Woche in einer eigenen Zeile - sonst bricht sie um. */
- .ptitel{order:-1;width:100%;min-width:0;text-align:left;font-size:16px;white-space:nowrap}
+ .ptitel{order:-1;width:100%;min-width:0;text-align:left;font-size:15px;white-space:nowrap}
  .pnav{flex:0 0 auto}
  .pverBtn{flex:1;padding:9px 10px;font-size:13px}
  .pkopf{gap:7px}
@@ -161,13 +186,14 @@ function kurzTag(t){return t.slice(8)+"."+t.slice(5,7)+".";}
 function planLaden(){
  var bis=tPlus(pVon,6);
  var q="api/chef/plan?von="+pVon+"&bis="+bis+(filterLoc?"&loc="+filterLoc:"");
- return get(q).then(function(d){ planD=d; planZeichnen(); });
+ return get(q).then(function(d){ planD=d; planZeichnen(); badgesZeichnen(); });
 }
 
 function planZeichnen(){
  if(!planD)return;
  var d=planD, bis=tPlus(pVon,6), heute=heuteTag();
- var h='<div class="pkopf">'+
+ var h='<div class="seitentitel">Schichtplan</div>';
+ h+='<div class="pkopf">'+
   '<div class="pnav"><button id="pPrev">&lsaquo;</button>'+
   '<button id="pHeute" style="width:auto;padding:0 11px;font-size:12.5px">Heute</button>'+
   '<button id="pNext">&rsaquo;</button></div>'+
@@ -201,7 +227,7 @@ function planZeichnen(){
   h+='<div class="pgk'+(t.tag===heute?" heute":"")+'">'+esc(t.label)+'</div>';
  });
  // Zeile "unbesetzt"
- h+='<div class="pgp" style="background:rgba(255,122,26,.05)">'+
+ h+='<div class="pgp" style="background:var(--o-weich)">'+
   '<div><div class="nm">Unbesetzt</div><div class="st">zieh jemanden drauf</div></div></div>';
  d.tage.forEach(function(t){
   h+='<div class="zelle zoffen" data-tag="'+t.tag+'" data-emp="">'+
@@ -243,7 +269,7 @@ function planZeichnen(){
 
  /* Offene Meldungen */
  if(d.meldungen&&d.meldungen.length){
-  h+='<div class="mkarten"><h2 style="font-size:15px;margin:0 0 10px">Zu entscheiden</h2>';
+  h+='<div class="mkarten"><h3 style="margin:0 0 10px">Zu entscheiden</h3>';
   d.meldungen.forEach(function(m){
    h+='<div class="mkart">'+avaHtml({name:m.name,photo:m.foto},false)+
     '<div class="txt"><div class="t1">'+esc(m.name)+' &middot; '+esc(m.typText)+'</div>'+
@@ -256,8 +282,43 @@ function planZeichnen(){
   h+='</div>';
  }
 
+ /* Soll gegen Ist - erst zeichnen, wenn die Daten da sind */
+ h+='<div class="sollist" id="pSollIst"></div>';
+
  $("tPlan").innerHTML=h;
  planBinden();
+ sollIstLaden();
+}
+
+/* Wer sollte da sein - und wer war es wirklich? Nur fuer ABGESCHLOSSENE Tage:
+   der heutige laeuft noch und wuerde faelschlich als Fehlzeit erscheinen. */
+function sollIstLaden(){
+ var gestern=tPlus(heuteTag(),-1);
+ if(pVon>gestern){$("pSollIst").innerHTML="";return;}
+ var bis=tPlus(pVon,6); if(bis>gestern)bis=gestern;
+ get("api/chef/sollist?von="+pVon+"&bis="+bis+(filterLoc?"&loc="+filterLoc:""))
+ .then(function(r){
+  var box=$("pSollIst");
+  if(!box)return;
+  var zeilen=(r.zeilen||[]).filter(function(z){return z.soll||z.ist;});
+  if(!zeilen.length){box.innerHTML="";return;}
+  var h='<h3 style="margin:0 0 10px">Soll gegen Ist &middot; '+kurzTag(pVon)+'–'+kurzTag(bis)+'</h3>'+
+   '<div class="karte" style="padding:12px 16px">'+
+   '<div class="sikopf"><div class="nm"></div><div class="w">Soll</div>'+
+   '<div class="w">Ist</div><div class="diff">Diff.</div></div>';
+  zeilen.forEach(function(z){
+   var f=z.diff>14?"var(--gruen)":(z.diff<-14?"var(--rot)":"var(--mut)");
+   var v=(z.diff>0?"+":(z.diff<0?"−":"±"))+std(Math.abs(z.diff));
+   h+='<div class="sirow"><div class="nm">'+esc(z.name)+
+    (z.tage.some(function(t){return t.nichtDa;})?' <span class="tag-warn tag-kein-start">NICHT DA</span>':'')+
+    '</div><div class="w">'+std(z.soll)+'</div><div class="w" style="color:var(--txt)">'+
+    std(z.ist)+'</div><div class="diff" style="color:'+f+'">'+v+'</div></div>';
+  });
+  h+='<div class="hint">Soll = veröffentlichter Plan, Ist = Stempeluhr. '+
+   '„Nicht da“: an mindestens einem Tag war eine Schicht geplant, aber es '+
+   'wurde gar nicht gestempelt.</div></div>';
+  box.innerHTML=h;
+ });
 }
 
 function farbeVon(s){
@@ -395,7 +456,7 @@ function schichtFenster(id,vorgabe){
  var empId=s?(s.empId||""):(v.empId||"");
  var von=s?s.von:"09:00", bis=s?s.bis:"17:00", pause=s?s.pause:0;
  var leute=planD.alleLeute.filter(function(p){return !filterLoc||p.locId===filterLoc;});
- var h='<h3 style="margin-top:0">'+(s?"Schicht ändern":"Neue Schicht")+'</h3>';
+ var h='<h2>'+(s?"Schicht ändern":"Neue Schicht")+'</h2>';
  h+='<label>Wer</label><select id="fEmp"><option value="">– unbesetzt (offene Schicht) –</option>';
  leute.forEach(function(p){h+='<option value="'+p.id+'"'+(p.id===empId?" selected":"")+
   '>'+esc(p.name)+'</option>';});
@@ -414,8 +475,8 @@ function schichtFenster(id,vorgabe){
  h+='<label>Notiz (sieht der Mitarbeiter)</label>'+
   '<input id="fNotiz" maxlength="200" value="'+esc(s?s.notiz:"")+'" placeholder="z. B. Lieferung annehmen">';
  if(!s){
-  h+='<div class="tw" style="margin-top:12px"><div><div>Jede Woche wiederholen</div>'+
-   '<div style="font-size:12px;color:var(--mut);margin-top:3px">läuft automatisch weiter</div></div>'+
+  h+='<div class="tw" style="margin-top:12px"><div><div class="t1">Jede Woche wiederholen</div>'+
+   '<div class="t2">läuft automatisch weiter</div></div>'+
    '<label class="schalter"><input type="checkbox" id="fWdh"><span class="b"></span></label></div>'+
    '<div id="fWdhBox" style="display:none"><label>An diesen Tagen</label>'+
    '<div class="tagpick" id="fTage"></div></div>';
@@ -487,7 +548,7 @@ function wdVon(tag){
 function vorlageFenster(id){
  var v=id?planD.vorlagen.filter(function(x){return x.id===id;})[0]:null;
  var farben=["#EB5A21","#3b82f6","#22c55e","#a855f7","#ef4444","#eab308","#14b8a6"];
- var h='<h3 style="margin-top:0">'+(v?"Schichtart ändern":"Neue Schichtart")+'</h3>'+
+ var h='<h2>'+(v?"Schichtart ändern":"Neue Schichtart")+'</h2>'+
   '<label>Name</label><input id="wName" maxlength="24" value="'+esc(v?v.name:"")+
   '" placeholder="Früh, Spät, Wochenende …">'+
   '<div class="frow"><div><label>Von</label><input type="time" id="wVon" value="'+
@@ -498,7 +559,7 @@ function vorlageFenster(id){
  farben.forEach(function(f){
   h+='<button type="button" data-f="'+f+'" style="background:'+f+
    ';border-color:'+f+';height:34px'+((v&&v.farbe===f)||(!v&&f==="#EB5A21")?
-   ';outline:2px solid #fff;outline-offset:2px':'')+'"></button>';});
+   ';outline:2px solid var(--txt);outline-offset:2px':'')+'"></button>';});
  h+='</div><div class="reihe" style="margin-top:14px">'+
   '<button class="btn" id="wSave">Speichern</button>'+
   '<button class="btn g" onclick="zu()">Abbrechen</button></div>';
@@ -511,7 +572,7 @@ function vorlageFenster(id){
   b.onclick=function(){
    gewaehlt=b.dataset.f;
    $("wFarben").querySelectorAll("button").forEach(function(x){x.style.outline="none";});
-   b.style.outline="2px solid #fff";b.style.outlineOffset="2px";};});
+   b.style.outline="2px solid var(--txt)";b.style.outlineOffset="2px";};});
  $("wSave").onclick=function(){
   if(!$("wName").value.trim()){toast("Name fehlt");return;}
   api("api/chef/vorlage",{id:v?v.id:null,name:$("wName").value,von:$("wVon").value,

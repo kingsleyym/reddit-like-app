@@ -130,6 +130,11 @@ catch (_) { ICON = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmM" +
   "IQAAAABJRU5ErkJggg==", "base64"); }
 
+// Die Schrift der Oberflaeche (Inter). Selbst ausgeliefert, kein fremder
+// Dienst - die App muss auch ohne Internet laufen.
+let SCHRIFT = null;
+try { SCHRIFT = fs.readFileSync(path.join(__dirname, "schrift.woff2")); } catch (_) {}
+
 /* ---------------------------- Server bauen -------------------------------- */
 
 function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
@@ -518,6 +523,15 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
         return res.end(ICON);
       }
 
+      /* --- Die Schrift (Inter) liegt als Datei neben dem Programm. Fehlt
+             sie, nimmt der Browser die Systemschrift - nichts geht kaputt. --- */
+      if (method === "GET" && p === "/schrift.woff2") {
+        if (!SCHRIFT) { res.writeHead(404); return res.end(); }
+        res.writeHead(200, { "Content-Type": "font/woff2",
+          "Content-Length": SCHRIFT.length, "Cache-Control": "public, max-age=604800" });
+        return res.end(SCHRIFT);
+      }
+
       /* --- Seiten --- */
       if (method === "GET" && (p === "/" || p === "/index.html")) return html(res, STEMPEL_HTML);
       if (method === "GET" && p === "/chef") {
@@ -832,6 +846,7 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
             locId: e.locId, locName: locName[e.locId] || "", codeHint: e.codeHint || "",
           })),
           live: store.live(),
+          meldungenOffen: store.offeneMeldungen().length,
           summary: store.summary(von, bis, { locId: locId || null, nurAktive }),
           probleme: store.probleme(von, bis).map((x) => {
             const e = store.employee(x.empId);
@@ -862,6 +877,27 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
         store.setConfig(await readBody(req), "chef");
         return json(res, { ok: true });
       }
+      /* --------------------- Entwickler-Bereich -------------------------- */
+      /*
+       * Kein Sicherheits-, ein Ordnungsding: Die Technik-Einstellungen
+       * (Adressen, Aufkleber, Fernzugang) sind in der Oberflaeche hinter
+       * einer eigenen PIN versteckt, damit der Laden-Chef sie nicht sieht
+       * und nichts verstellt. Standard-PIN: 1337 (im Bereich aenderbar).
+       */
+      if (method === "POST" && p === "/api/chef/dev-pin") {
+        const b = await readBody(req);
+        const soll = String(store.state.config.devPin || "1337");
+        return json(res, { ok: String(b.pin || "") === soll });
+      }
+      if (method === "POST" && p === "/api/chef/dev-pin-neu") {
+        const b = await readBody(req);
+        if (!/^\d{4,8}$/.test(String(b.pin || "")))
+          return json(res, { ok: false, fehler: "4 bis 8 Ziffern." });
+        store.state.config.devPin = String(b.pin);
+        store.save();
+        return json(res, { ok: true });
+      }
+
       if (method === "POST" && p === "/api/chef/chefpin") {
         const b = await readBody(req);
         if (!/^\d{4,8}$/.test(String(b.pin || "")))
@@ -1042,12 +1078,16 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
   function fehlerSeite(titel, text) {
     return '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8">' +
       '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-      '<title>Stempeluhr</title></head><body style="margin:0;height:100vh;display:flex;' +
-      'align-items:center;justify-content:center;background:#05070c;color:#f0f4f8;' +
-      'font-family:Arial;text-align:center;padding:24px"><div>' +
+      '<title>Stempeluhr</title><style>' +
+      '@font-face{font-family:"Inter";font-weight:400 800;src:url("/schrift.woff2") format("woff2")}' +
+      'body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;' +
+      'background:#F4F4F6;color:#141519;text-align:center;padding:24px;' +
+      'font-family:"Inter",-apple-system,"Segoe UI",Arial,sans-serif}' +
+      '@media (prefers-color-scheme:dark){body{background:#0B0D12;color:#EEF1F6}}' +
+      '</style></head><body><div>' +
       '<div style="font-size:52px">⚠️</div><h2 style="font-weight:800">' + titel + '</h2>' +
-      '<p style="opacity:.6">' + text + '</p>' +
-      '<a href="/" style="color:#EB5A21">Zur Stempeluhr</a></div></body></html>';
+      '<p style="opacity:.6;line-height:1.6">' + text + '</p>' +
+      '<a href="/" style="color:#EB5A21;font-weight:600">Zur Stempeluhr</a></div></body></html>';
   }
 
   server.requestTimeout = 0;

@@ -12,28 +12,28 @@
  * niemand die Handy-Tastatur zu bedienen.
  */
 
+const { TOKENS_CSS } = require("./design");
+
 const STEMPEL_HTML = `<!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#05070c">
+<meta name="theme-color" content="#0B0D12" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F4F4F6" media="(prefers-color-scheme: light)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Stempeluhr</title>
 <style>
-:root{--o:#EB5A21;--gruen:#2fbf5f;--rot:#e0483c;--bg:#05070c;--fl:#0d1320;--li:#2a3550;}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{margin:0;height:100%;background:var(--bg);color:#f0f4f8;overflow:hidden;
- font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
- -webkit-user-select:none;user-select:none;}
+${TOKENS_CSS}
+html,body{height:100%;overflow:hidden;-webkit-user-select:none;user-select:none;}
 .wrap{position:fixed;inset:0;display:flex;flex-direction:column;
  padding:max(12px,env(safe-area-inset-top)) 15px max(12px,env(safe-area-inset-bottom));}
 .top{display:flex;align-items:center;justify-content:space-between;flex:0 0 auto;}
 .firma{font-size:13px;letter-spacing:.2em;text-transform:uppercase;opacity:.55;}
 .firma b{color:var(--o);}
 .lang{display:flex;gap:4px;}
-.lang button{background:var(--fl);border:1px solid var(--li);color:#8b98b8;
+.lang button{background:var(--fl);border:1px solid var(--li);color:var(--mut);
  border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;font-family:inherit;}
-.lang button.on{border-color:var(--o);color:#fff;background:rgba(235,90,33,.18);}
+.lang button.on{border-color:var(--o);color:var(--o);background:var(--o-weich);}
 .uhr{text-align:center;flex:0 0 auto;margin:4px 0 0;}
 .uhr .t{font-size:44px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;}
 .uhr .d{font-size:12px;opacity:.45;letter-spacing:.14em;margin-top:4px;text-transform:uppercase;}
@@ -43,10 +43,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:#f0f4f8;overflow:hidde
  min-height:46px;font-variant-numeric:tabular-nums;margin-bottom:12px;}
 .feld .leer{opacity:.22;}
 .pad{display:grid;gap:8px;margin:0 auto;width:100%;max-width:360px;}
-.key{background:var(--fl);border:1px solid var(--li);border-radius:12px;color:#fff;
- font-weight:600;font-family:inherit;display:flex;align-items:center;justify-content:center;}
-.key:active{background:#182136;}
-.key.ok{border-color:var(--o);background:rgba(235,90,33,.16);}
+.key{background:var(--fl);border:1px solid var(--li);border-radius:12px;color:var(--txt);
+ font-weight:600;font-family:inherit;display:flex;align-items:center;justify-content:center;
+ box-shadow:var(--schatten);}
+.key:active{background:var(--fl2);}
+.key.ok{border-color:var(--o);background:var(--o);color:#fff;}
 .person{text-align:center;}
 .ava{width:96px;height:96px;border-radius:50%;margin:0 auto 12px;overflow:hidden;
  background:var(--fl);border:3px solid var(--o);display:flex;align-items:center;
@@ -56,7 +57,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:#f0f4f8;overflow:hidde
 .status{font-size:15px;opacity:.66;margin-top:6px;}
 .stunden{display:flex;gap:10px;justify-content:center;margin-top:14px;}
 .stunden div{background:var(--fl);border:1px solid var(--li);border-radius:12px;
- padding:9px 16px;min-width:96px;}
+ padding:9px 16px;min-width:96px;box-shadow:var(--schatten);}
 .stunden .w{font-size:20px;font-weight:800;color:var(--o);font-variant-numeric:tabular-nums;}
 .stunden .l{font-size:10.5px;opacity:.5;letter-spacing:.1em;margin-top:2px;text-transform:uppercase;}
 .gross{width:100%;max-width:420px;margin:24px auto 0;border-radius:20px;border:none;
@@ -65,7 +66,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:#f0f4f8;overflow:hidde
 .gross.rein{background:var(--gruen);box-shadow:0 10px 34px rgba(47,191,95,.34);}
 .gross.raus{background:var(--rot);box-shadow:0 10px 34px rgba(224,72,60,.34);}
 .gross:active{transform:scale(.98);}
-.zurueck{display:block;margin:14px auto 0;background:none;border:none;color:#8b98b8;
+.zurueck{display:block;margin:14px auto 0;background:none;border:none;color:var(--mut);
  font-size:14px;font-family:inherit;padding:10px 20px;}
 .haken{width:112px;height:112px;border-radius:50%;margin:0 auto 18px;display:flex;
  align-items:center;justify-content:center;font-size:56px;color:#fff;}
@@ -74,7 +75,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:#f0f4f8;overflow:hidde
 .zeit-txt{font-size:52px;font-weight:800;text-align:center;color:var(--o);
  font-variant-numeric:tabular-nums;margin:6px 0;}
 .unter{text-align:center;font-size:16px;opacity:.66;line-height:1.5;}
-.fehler{background:rgba(224,72,60,.15);border:1px solid var(--rot);border-radius:11px;
+.fehler{background:var(--rot-weich);border:1px solid var(--rot);border-radius:11px;
  padding:12px;text-align:center;font-size:14px;margin:0 auto 12px;max-width:420px;}
 .sperre{text-align:center;padding:18px;}
 .sperre .icon{font-size:56px;margin-bottom:12px;}

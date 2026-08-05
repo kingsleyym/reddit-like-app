@@ -12,182 +12,194 @@
  *   ZEITEN      – Zeitraum waehlen, Zusammenfassung, Detail per Klick
  *   ZU PRÜFEN   – Arbeitsliste: offene Schichten, fehlende Stempel,
  *                 automatische Ausstempelungen, unplausibel lange Schichten
+ *   SCHICHTPLAN – Wochenplan mit Ziehen & Ablegen (eigene Datei)
  *   TEAM        – Mitarbeiter, Codes, Fotos, Standorte
- *   EINSTELLUNG – Firma, Anwesenheit, Pausen, Auto-Ausstempeln, NFC/Terminal
+ *   EINSTELLUNG – nur das, was der Laden-Chef wirklich braucht.
+ *                 Technik (Adressen, NFC, Fernzugang) liegt im
+ *                 Entwickler-Bereich hinter einer eigenen PIN - nicht als
+ *                 Sicherheitsmassnahme, sondern damit die Seite aufgeraeumt
+ *                 bleibt und niemand aus Versehen etwas verstellt.
+ *
+ * Aufbau der Oberflaeche: am grossen Bildschirm eine feste Seitenleiste
+ * links, am Handy eine Leiste unten - dieselben Reiter, derselbe Inhalt.
+ * Hell/Dunkel kommt aus design.js und gilt fuer alle Seiten gleich.
  */
 
 const { PLAN_CSS, PLAN_JS } = require("./seite-plan");
+const { TOKENS_CSS, BASIS_CSS, THEMA_JS } = require("./design");
 
 const CHEF_HTML = `<!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#05070c">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0B0D12" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F4F4F6" media="(prefers-color-scheme: light)">
 <title>Zeiten – Chef</title>
 <style>
-:root{--o:#EB5A21;--gruen:#2fbf5f;--rot:#e0483c;--gelb:#e8a33d;--bg:#05070c;
- --fl:#0d1320;--fl2:#111a2b;--li:#2a3550;--txt:#f0f4f8;--mut:#8b98b8;}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{margin:0;background:var(--bg);color:var(--txt);font-size:15px;
- font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;}
-.kopf{position:sticky;top:0;z-index:20;background:rgba(5,7,12,.97);
- border-bottom:1px solid var(--li);padding:12px 16px;display:flex;
- align-items:center;justify-content:space-between;gap:10px;}
-.marke{font-size:14px;letter-spacing:.2em;text-transform:uppercase;}
+${TOKENS_CSS}
+${BASIS_CSS}
+
+/* ------------------------------ Grundgeruest ----------------------------- */
+.app{display:flex;min-height:100vh;}
+.haupt{flex:1;min-width:0;}
+.inhalt{padding:16px 16px 96px;max-width:1080px;margin:0 auto;}
+.seitentitel{font-size:21px;font-weight:700;letter-spacing:-.02em;margin:4px 0 14px;
+ display:flex;align-items:center;gap:10px;}
+.seitentitel .rechts{margin-left:auto;display:flex;gap:8px;align-items:center;
+ font-size:13px;font-weight:400;}
+
+/* Seitenleiste (Tablet quer / Desktop) */
+.seite{display:none;}
+.marke{font-size:13px;letter-spacing:.18em;text-transform:uppercase;font-weight:650;
+ padding:6px 12px 0;}
 .marke b{color:var(--o);}
-.tabs{display:flex;gap:6px;overflow-x:auto;padding:10px 16px;position:sticky;top:53px;
- background:var(--bg);z-index:19;border-bottom:1px solid var(--li);}
-.tabs button{background:var(--fl);border:1px solid var(--li);color:var(--mut);
- border-radius:999px;padding:8px 15px;font-size:13.5px;font-weight:600;
- font-family:inherit;white-space:nowrap;position:relative;}
-.tabs button.on{background:rgba(235,90,33,.16);border-color:var(--o);color:#fff;}
-.tabs .zahl{background:var(--rot);color:#fff;border-radius:999px;font-size:10.5px;
- padding:1px 6px;margin-left:6px;font-weight:800;}
-.inhalt{padding:16px;max-width:1000px;margin:0 auto;padding-bottom:60px;}
-.karte{background:var(--fl);border:1px solid var(--li);border-radius:14px;
- padding:15px;margin-bottom:13px;}
-h2{font-size:15px;margin:0 0 12px;}
-h3{font-size:12px;color:var(--mut);letter-spacing:.16em;text-transform:uppercase;
- margin:16px 0 8px;font-weight:600;}
-.btn{background:rgba(235,90,33,.16);border:1px solid var(--o);color:#fff;
- border-radius:10px;padding:10px 16px;font-size:14px;font-weight:600;font-family:inherit;}
-.btn.g{background:var(--fl2);border-color:var(--li);color:var(--txt);}
-.btn.voll{display:block;width:100%;margin-top:9px;}
-input,select{background:var(--fl2);border:1px solid var(--li);border-radius:9px;
- color:#fff;padding:10px 11px;font-size:15px;font-family:inherit;width:100%;}
-label{display:block;font-size:12px;color:var(--mut);margin:11px 0 5px;}
-.reihe{display:flex;gap:9px;align-items:center;}
-.reihe>*{flex:1;}
-.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
-.chip{background:var(--fl2);border:1px solid var(--li);color:var(--mut);
- border-radius:999px;padding:7px 13px;font-size:12.5px;font-family:inherit;font-weight:600;}
-.chip.on{border-color:var(--o);color:#fff;background:rgba(235,90,33,.14);}
-.ava{width:42px;height:42px;border-radius:50%;overflow:hidden;background:var(--fl2);
- border:2px solid var(--li);display:flex;align-items:center;justify-content:center;
- font-weight:800;color:var(--mut);flex:0 0 auto;font-size:15px;}
-.ava.da{border-color:var(--gruen);color:var(--gruen);}
-.ava img{width:100%;height:100%;object-fit:cover;}
-/* Live-Kacheln */
-.kacheln{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:11px;}
+.nav{display:flex;flex-direction:column;gap:2px;margin-top:20px;}
+.nav button{display:flex;align-items:center;gap:11px;background:none;border:0;
+ color:var(--mut);padding:10px 12px;border-radius:10px;font-size:13.5px;
+ font-weight:550;text-align:left;width:100%;}
+.nav button:hover{background:var(--fl2);color:var(--txt);}
+.nav button.on{background:var(--o-weich);color:var(--o);font-weight:650;}
+.nav button svg{flex:0 0 auto;}
+.nav .zahl{margin-left:auto;background:var(--rot);color:#fff;border-radius:999px;
+ font-size:10px;padding:2px 7px;font-weight:700;}
+.seitenfuss{margin-top:auto;display:flex;gap:8px;align-items:center;padding:0 4px;}
+.seitenfuss .mini{flex:1;padding:8px 10px;text-align:center;}
+
+/* Kopfzeile (Handy / Tablet hochkant) */
+.kopfmobil{position:sticky;top:0;z-index:25;background:var(--bg);
+ border-bottom:1px solid var(--li);display:flex;align-items:center;gap:10px;
+ justify-content:space-between;padding:11px 16px;
+ padding-top:max(11px,env(safe-area-inset-top));}
+.kopfmobil .marke{padding:0;}
+
+/* Leiste unten (Handy) */
+.unten{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;
+ background:var(--fl);border-top:1px solid var(--li);
+ padding:6px 4px calc(6px + env(safe-area-inset-bottom));}
+.unten button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+ background:none;border:0;color:var(--mut);font-size:9.5px;font-weight:600;
+ padding:4px 0;position:relative;min-width:0;}
+.unten button.on{color:var(--o);}
+.unten .zahl{position:absolute;top:-3px;left:calc(50% + 4px);background:var(--rot);
+ color:#fff;border-radius:999px;font-size:9px;padding:1px 5px;font-weight:700;}
+
+@media(min-width:980px){
+ .seite{display:flex;flex-direction:column;position:fixed;top:0;bottom:0;left:0;
+  width:225px;background:var(--fl);border-right:1px solid var(--li);
+  padding:20px 12px 18px;z-index:30;}
+ .haupt{margin-left:225px;}
+ .kopfmobil,.unten{display:none;}
+ .inhalt{padding:26px 30px 60px;}
+}
+
+/* Kacheln "Jetzt" */
+.kacheln{display:grid;grid-template-columns:repeat(auto-fill,minmax(142px,1fr));gap:10px;}
 .kachel{background:var(--fl2);border:1px solid var(--li);border-radius:14px;
- padding:13px 10px;text-align:center;}
-.kachel.da{border-color:var(--gruen);background:rgba(47,191,95,.08);}
-.kachel .ava{margin:0 auto 8px;width:54px;height:54px;font-size:18px;}
-.kachel .nm{font-size:14px;font-weight:650;overflow:hidden;text-overflow:ellipsis;
+ padding:14px 10px;text-align:center;}
+.kachel.da{border-color:var(--gruen);background:var(--gruen-weich);}
+.kachel .ava{margin:0 auto 9px;width:52px;height:52px;font-size:17px;}
+.kachel .nm{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;
  white-space:nowrap;}
-.kachel .st{font-size:11.5px;color:var(--mut);margin-top:4px;}
+.kachel .st{font-size:11.5px;color:var(--mut);margin-top:3px;}
 .kachel.da .st{color:var(--gruen);font-weight:600;}
-/* Zusammenfassung */
-.zeile{display:flex;align-items:center;gap:11px;padding:11px 12px;background:var(--fl2);
- border:1px solid var(--li);border-radius:12px;margin-bottom:8px;}
-.zeile .txt{flex:1;min-width:0;}
-.zeile .nm{font-weight:650;display:flex;align-items:center;gap:7px;}
-.zeile .sub{font-size:12px;color:var(--mut);margin-top:3px;}
-.zeile .std{font-weight:800;color:var(--o);font-size:17px;text-align:right;
- font-variant-numeric:tabular-nums;}
-.warn{background:var(--rot);color:#fff;font-size:10px;font-weight:800;border-radius:999px;
- padding:2px 7px;}
-.pfeil{color:var(--mut);font-size:18px;}
-/* Detail */
+
+/* Zeiten-Detail */
+.zeile .std{font-weight:700;color:var(--o);font-size:16.5px;text-align:right;
+ font-variant-numeric:tabular-nums;flex:0 0 auto;}
 .wochenkopf{display:flex;justify-content:space-between;align-items:center;
- padding:9px 12px;background:var(--fl2);border-radius:9px;margin:12px 0 7px;
- font-size:12.5px;color:var(--mut);letter-spacing:.06em;}
-.wochenkopf b{color:var(--o);font-size:14px;}
-.tagzeile{padding:7px 4px 3px;font-size:12px;color:var(--mut);
+ padding:9px 12px;background:var(--fl2);border-radius:10px;margin:14px 0 7px;
+ font-size:12px;color:var(--mut);letter-spacing:.04em;}
+.wochenkopf b{color:var(--o);font-size:13.5px;}
+.tagzeile{padding:8px 4px 4px;font-size:12px;color:var(--mut);
  display:flex;justify-content:space-between;}
-.schicht{display:flex;align-items:center;gap:9px;padding:9px 10px;background:var(--fl2);
- border:1px solid transparent;border-radius:9px;margin-bottom:5px;font-size:14px;}
+.schicht{display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--fl2);
+ border:1px solid var(--li);border-radius:10px;margin-bottom:5px;font-size:13.5px;
+ flex-wrap:wrap;}
 .schicht .z{font-variant-numeric:tabular-nums;}
-.schicht .d{margin-left:auto;font-weight:700;}
+.schicht .d{margin-left:auto;font-weight:650;font-variant-numeric:tabular-nums;}
 .schicht.p-offen{border-color:var(--gruen);}
-.schicht.p-auto{border-color:var(--gelb);}
-.schicht.p-lang{border-color:var(--gelb);}
+.schicht.p-auto,.schicht.p-lang{border-color:var(--gelb);}
 .schicht.p-kein-start{border-color:var(--rot);}
-.mini{background:none;border:1px solid var(--li);color:var(--mut);border-radius:7px;
- padding:4px 9px;font-size:11.5px;font-family:inherit;}
-.tag-warn{font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:999px;}
-.tag-offen{background:rgba(47,191,95,.2);color:var(--gruen);}
-.tag-auto,.tag-lang{background:rgba(232,163,61,.2);color:var(--gelb);}
-.tag-kein-start{background:rgba(224,72,60,.2);color:var(--rot);}
-.leer{color:var(--mut);text-align:center;padding:24px;font-size:14px;}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:60;display:none;
- align-items:flex-end;justify-content:center;}
-.modal.auf{display:flex;}
-.mkarte{background:#0b1119;border:1px solid var(--li);border-radius:18px 18px 0 0;
- padding:19px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;}
-@media(min-width:560px){.modal{align-items:center;}.mkarte{border-radius:18px;}}
-.tw{display:flex;align-items:center;justify-content:space-between;gap:10px;
- padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);}
-.tw:last-child{border-bottom:none;}
-.schalter{position:relative;width:48px;height:28px;flex:0 0 auto;}
-.schalter input{position:absolute;opacity:0;width:100%;height:100%;margin:0;}
-.schalter .b{position:absolute;inset:0;background:var(--fl2);border:1px solid var(--li);
- border-radius:999px;transition:.2s;}
-.schalter .b:after{content:"";position:absolute;width:20px;height:20px;border-radius:50%;
- background:var(--mut);top:3px;left:3px;transition:.2s;}
-.schalter input:checked+.b{background:rgba(235,90,33,.3);border-color:var(--o);}
-.schalter input:checked+.b:after{background:var(--o);transform:translateX(20px);}
-.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;
- background:var(--fl2);border:1px solid var(--li);border-radius:8px;padding:9px;
- word-break:break-all;color:#9fd0ff;}
-.hint{font-size:12.5px;color:var(--mut);line-height:1.6;margin-top:9px;}
-.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#111a2b;
- border:1px solid var(--o);border-radius:11px;padding:12px 20px;font-size:14px;z-index:80;
- display:none;box-shadow:0 8px 30px rgba(0,0,0,.5);}
-.mitte{text-align:center;}
-.gross{font-size:32px;font-weight:800;color:var(--o);}
-.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:13px;}
-.kpi div{background:var(--fl2);border-radius:10px;padding:11px 6px;text-align:center;}
-.kpi .w{font-size:19px;font-weight:800;}
-.kpi .l{font-size:10.5px;color:var(--mut);margin-top:3px;letter-spacing:.05em;}
+
+/* Protokoll ("Letzte Änderungen") – Texte brechen sauber um, nichts laeuft
+   mehr aus dem Rahmen. */
+.log{max-height:420px;overflow-y:auto;overscroll-behavior:contain;}
+.log .eintrag{padding:10px 2px;border-bottom:1px solid var(--li);min-width:0;}
+.log .eintrag:last-child{border-bottom:none;}
+.log .z{color:var(--mut);font-size:11px;font-variant-numeric:tabular-nums;}
+.log .w{font-weight:600;font-size:13px;margin:2px 0 1px;overflow-wrap:anywhere;}
+.log .d{color:var(--mut);font-size:12.5px;line-height:1.5;overflow-wrap:anywhere;
+ word-break:break-word;}
+
+/* Entwickler-Bereich: sichtbar abgesetzt, gestrichelter Rahmen */
+.dev{border-style:dashed;border-color:var(--li2);}
+.dev h2 .devtag{font-size:9.5px;font-weight:700;letter-spacing:.08em;color:var(--mut);
+ border:1px solid var(--li2);border-radius:6px;padding:2px 6px;vertical-align:2px;
+ margin-left:8px;text-transform:uppercase;}
+.devauf{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+ background:none;border:1px dashed var(--li2);color:var(--mut);border-radius:12px;
+ padding:12px;font-size:12.5px;font-weight:550;margin:6px 0 20px;}
+.devauf:hover{color:var(--txt);border-color:var(--mut);}
+
+/* Anmeldung */
 #login{position:fixed;inset:0;background:var(--bg);z-index:100;display:flex;
- flex-direction:column;align-items:center;justify-content:center;padding:24px;}
-#login .box{width:100%;max-width:300px;text-align:center;}
+ align-items:center;justify-content:center;padding:24px;}
+#login .box{width:100%;max-width:340px;background:var(--fl);border:1px solid var(--li);
+ border-radius:20px;padding:28px 24px;box-shadow:var(--schatten);text-align:center;}
+#login input{text-align:center;font-size:20px;letter-spacing:.28em;}
+
 ${PLAN_CSS}
 </style></head><body>
 
 <div id="login"><div class="box">
- <div style="font-size:15px;letter-spacing:.24em;text-transform:uppercase;opacity:.6">
-  KINGSLEY<span style="color:var(--o)">.</span> ZEITEN</div>
- <h2 style="margin:16px 0 20px;font-size:20px" id="loginTitel">Chef-PIN</h2>
- <input id="chefPin" type="password" inputmode="numeric" placeholder="PIN"
-  style="text-align:center;font-size:22px;letter-spacing:.3em">
+ <div class="marke" style="padding:0">KINGSLEY<b>.</b> ZEITEN</div>
+ <h2 style="margin:18px 0 16px;font-size:19px" id="loginTitel">Chef-PIN</h2>
+ <input id="chefPin" type="password" inputmode="numeric" placeholder="••••">
  <div id="chefPin2Wrap" style="display:none">
-  <label>PIN wiederholen</label>
-  <input id="chefPin2" type="password" inputmode="numeric"
-   style="text-align:center;font-size:22px;letter-spacing:.3em">
+  <label style="text-align:left">PIN wiederholen</label>
+  <input id="chefPin2" type="password" inputmode="numeric">
  </div>
  <button class="btn voll" id="loginBtn">Anmelden</button>
  <div id="loginFehler" style="color:var(--rot);font-size:13px;margin-top:12px;min-height:18px"></div>
 </div></div>
 
-<div class="kopf">
- <div class="marke">KINGSLEY<b>.</b> ZEITEN</div>
- <button class="mini" id="abmelden">Abmelden</button>
+<div class="app">
+ <aside class="seite">
+  <div class="marke">KINGSLEY<b>.</b> ZEITEN</div>
+  <nav class="nav" id="navSeite"></nav>
+  <div class="seitenfuss">
+   <button class="thema-knopf" data-thema-knopf onclick="themaWechsel()"></button>
+   <button class="mini" id="abmelden">Abmelden</button>
+  </div>
+ </aside>
+
+ <div class="haupt">
+  <div class="kopfmobil">
+   <div class="marke">KINGSLEY<b>.</b> ZEITEN</div>
+   <div style="display:flex;gap:8px;align-items:center">
+    <button class="thema-knopf" data-thema-knopf onclick="themaWechsel()"></button>
+    <button class="mini" id="abmelden2">Abmelden</button>
+   </div>
+  </div>
+  <div class="inhalt">
+   <div id="locbar" style="display:none;margin-bottom:14px"><div class="chips" id="locChips"></div></div>
+   <div id="tJetzt"></div>
+   <div id="tZeiten" style="display:none"></div>
+   <div id="tPruefen" style="display:none"></div>
+   <div id="tPlan" style="display:none"></div>
+   <div id="tTeam" style="display:none"></div>
+   <div id="tSetup" style="display:none"></div>
+  </div>
+ </div>
 </div>
-<div id="locbar" style="display:none;padding:9px 16px 0;max-width:1000px;margin:0 auto">
- <div class="chips" id="locChips"></div>
-</div>
-<div class="tabs" id="tabs">
- <button data-t="jetzt" class="on">Jetzt</button>
- <button data-t="zeiten">Zeiten</button>
- <button data-t="pruefen">Zu prüfen<span class="zahl" id="badge" style="display:none">0</span></button>
- <button data-t="plan">Schichtplan<span class="zahl" id="badgePlan" style="display:none">0</span></button>
- <button data-t="team">Team</button>
- <button data-t="setup">Einstellungen</button>
-</div>
-<div class="inhalt">
- <div id="tJetzt"></div>
- <div id="tZeiten" style="display:none"></div>
- <div id="tPruefen" style="display:none"></div>
- <div id="tPlan" style="display:none"></div>
- <div id="tTeam" style="display:none"></div>
- <div id="tSetup" style="display:none"></div>
-</div>
+
+<nav class="unten" id="navUnten"></nav>
 
 <div class="modal" id="modal"><div class="mkarte" id="modalInhalt"></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
+${THEMA_JS}
+document.querySelectorAll("[data-thema-knopf]").forEach(themaKnopfMalen);
 function $(i){return document.getElementById(i);}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){
  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
@@ -216,6 +228,64 @@ function monatStart(){var d=new Date();
 
 var daten=null,setupNoetig=false,tab="jetzt";
 var von=wocheStart(),bis=heute(),zeitraum="woche",filterLoc="",nurAktive=true;
+var devFrei=false;
+try{devFrei=sessionStorage.getItem("zeit-dev")==="1";}catch(e){}
+
+/* ------------------------------ Navigation ------------------------------- */
+/* Dieselben Reiter zweimal gezeichnet: links als Leiste, unten als App-Leiste.
+   Die Zahlen ("zu pruefen", offene Meldungen) haengen an data-badge. */
+var ICO={
+ jetzt:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+ zeiten:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+ pruefen:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+ plan:'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+ team:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+ setup:'<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>'
+};
+function icon(n,g){return '<svg width="'+(g||17)+'" height="'+(g||17)+
+ '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '+
+ 'stroke-linecap="round" stroke-linejoin="round">'+ICO[n]+'</svg>';}
+var TABS=[
+ {id:"jetzt",name:"Jetzt",kurz:"Jetzt"},
+ {id:"zeiten",name:"Zeiten",kurz:"Zeiten"},
+ {id:"pruefen",name:"Zu prüfen",kurz:"Prüfen",badge:"pruefen"},
+ {id:"plan",name:"Schichtplan",kurz:"Plan",badge:"plan"},
+ {id:"team",name:"Team",kurz:"Team"},
+ {id:"setup",name:"Einstellungen",kurz:"Mehr"}
+];
+function navZeichnen(){
+ $("navSeite").innerHTML=TABS.map(function(t){
+  return '<button data-t="'+t.id+'"'+(tab===t.id?' class="on"':'')+'>'+icon(t.id)+
+   '<span>'+t.name+'</span>'+
+   (t.badge?'<span class="zahl" data-badge="'+t.badge+'" style="display:none">0</span>':'')+
+   '</button>';}).join("");
+ $("navUnten").innerHTML=TABS.map(function(t){
+  return '<button data-t="'+t.id+'"'+(tab===t.id?' class="on"':'')+'>'+icon(t.id,19)+
+   '<span>'+t.kurz+'</span>'+
+   (t.badge?'<span class="zahl" data-badge="'+t.badge+'" style="display:none">0</span>':'')+
+   '</button>';}).join("");
+ document.querySelectorAll("[data-t]").forEach(function(b){
+  b.onclick=function(){tabWechsel(b.dataset.t);};});
+ badgesZeichnen();
+}
+function tabWechsel(t){
+ tab=t;
+ document.querySelectorAll("[data-t]").forEach(function(x){
+  x.classList.toggle("on",x.dataset.t===t);});
+ ["Jetzt","Zeiten","Pruefen","Plan","Team","Setup"].forEach(function(n){
+  $("t"+n).style.display=(n.toLowerCase()===t?"":"none");});
+ window.scrollTo(0,0);
+ if(t==="plan"){planLaden();return;}
+ zeichne();
+}
+function badgesZeichnen(){
+ if(!daten)return;
+ var werte={pruefen:daten.probleme.length,
+  plan:(window.planD&&planD.meldungen)?planD.meldungen.length:(daten.meldungenOffen||0)};
+ document.querySelectorAll("[data-badge]").forEach(function(el){
+  var n=werte[el.dataset.badge]||0;
+  el.style.display=n?"":"none";el.textContent=n;});
+}
 
 /* ------------------------------ Anmeldung ------------------------------- */
 var fernModus=false;
@@ -229,8 +299,7 @@ get("api/chef/status").then(function(s){
   $("chefPin").placeholder="Passwort";
   $("chefPin").removeAttribute("inputmode");
   $("chefPin").style.letterSpacing="normal";
-  $("chefPin").style.fontSize="17px";
-  $("chefPin").style.textAlign="left";
+  $("chefPin").style.fontSize="16px";
   if(s.wartenSek)$("loginFehler").textContent=
    "Gesperrt – noch "+Math.ceil(s.wartenSek/60)+" Min.";
  }else if(setupNoetig){
@@ -257,28 +326,17 @@ $("loginBtn").onclick=function(){
    (rest>0&&rest<3?" Noch "+rest+" Versuche.":"");});
 };
 $("chefPin").addEventListener("keydown",function(e){if(e.key==="Enter")$("loginBtn").click();});
-$("abmelden").onclick=function(){api("api/chef/logout").then(function(){location.reload();});};
-
-document.querySelectorAll(".tabs button").forEach(function(b){
- b.onclick=function(){
-  tab=b.dataset.t;
-  document.querySelectorAll(".tabs button").forEach(function(x){x.classList.remove("on");});
-  b.classList.add("on");
-  ["Jetzt","Zeiten","Pruefen","Plan","Team","Setup"].forEach(function(n){
-   $("t"+n).style.display=(n.toLowerCase()===tab?"":"none");});
-  if(tab==="plan"){planLaden();return;}
-  zeichne();
- };
-});
+function abmelden(){api("api/chef/logout").then(function(){location.reload();});}
+$("abmelden").onclick=abmelden;
+$("abmelden2").onclick=abmelden;
 
 function laden(){
- get("api/chef/uebersicht?von="+von+"&bis="+bis+"&loc="+encodeURIComponent(filterLoc)+
+ return get("api/chef/uebersicht?von="+von+"&bis="+bis+"&loc="+encodeURIComponent(filterLoc)+
      "&aktive="+(nurAktive?"1":"0"))
  .then(function(d){
   if(d.fehler==="auth"){location.reload();return;}
   daten=d;
-  var n=d.probleme.length;
-  $("badge").style.display=n?"":"none";$("badge").textContent=n;
+  navZeichnen();
   zeichne();
  });
 }
@@ -298,11 +356,12 @@ function locFilter(){
 function zeichne(){
  if(!daten)return;
  locFilter();
+ badgesZeichnen();
  if(tab==="jetzt")zJetzt();
  else if(tab==="zeiten")zZeiten();
  else if(tab==="pruefen")zPruefen();
  else if(tab==="team")zTeam();
- else zSetup();
+ else if(tab==="setup")zSetup();
 }
 
 /* -------------------------------- JETZT --------------------------------- */
@@ -311,57 +370,58 @@ function zJetzt(){
  var da=alle.filter(function(p){return p.in;});
  var weg=alle.filter(function(p){return !p.in;});
  var summe=da.reduce(function(a,p){return a+p.sinceMin;},0);
- var h='<div class="karte"><h2>Gerade im Laden</h2>'+
-  '<div class="kpi"><div><div class="w" style="color:var(--gruen)">'+da.length+'</div>'+
-  '<div class="l">EINGESTEMPELT</div></div>'+
-  '<div><div class="w">'+weg.length+'</div><div class="l">NICHT DA</div></div>'+
+ var h='<div class="seitentitel">Jetzt</div>'+
+  '<div class="karte"><div class="kpi">'+
+  '<div><div class="w" style="color:var(--gruen)">'+da.length+'</div>'+
+  '<div class="l">Eingestempelt</div></div>'+
+  '<div><div class="w">'+weg.length+'</div><div class="l">Nicht da</div></div>'+
   '<div><div class="w" style="color:var(--o)">'+std(summe)+'</div>'+
-  '<div class="l">LAUFENDE STD.</div></div></div></div>';
+  '<div class="l">Laufende Std.</div></div></div></div>';
  if(da.length){
-  h+='<div class="karte"><h3 style="margin-top:0">Im Laden</h3><div class="kacheln">';
+  h+='<h3>Im Laden</h3><div class="kacheln">';
   da.forEach(function(p){
    h+='<div class="kachel da">'+avaHtml(p,true)+'<div class="nm">'+esc(p.name)+'</div>'+
     '<div class="st">seit '+esc(p.since)+' · '+std(p.sinceMin)+' h</div>'+
     (daten.locations.length>1&&p.location?'<div class="st" style="opacity:.55">'+
      esc(p.location)+'</div>':"")+'</div>';});
-  h+='</div></div>';
+  h+='</div>';
  }
- h+='<div class="karte"><h3 style="margin-top:0">Nicht da</h3>';
- if(!weg.length)h+='<div class="leer">Alle sind eingestempelt.</div>';
+ h+='<h3>Nicht da</h3>';
+ if(!weg.length)h+='<div class="karte"><div class="leer">Alle sind eingestempelt.</div></div>';
  else{h+='<div class="kacheln">';
   weg.forEach(function(p){
    h+='<div class="kachel">'+avaHtml(p,false)+'<div class="nm">'+esc(p.name)+'</div>'+
-    '<div class="st">'+esc(p.location||"")+'</div></div>';});
+    '<div class="st">'+esc(p.location||"nicht da")+'</div></div>';});
   h+='</div>';}
- h+='</div>';
  $("tJetzt").innerHTML=h;
 }
 
 /* -------------------------------- ZEITEN -------------------------------- */
 function zZeiten(){
  var s=daten.summary;
- var h='<div class="karte">'+
-  '<div class="chips">'+
+ var h='<div class="seitentitel">Zeiten</div>'+
+  '<div class="karte">'+
+  '<div class="chips" style="margin-bottom:10px">'+
    chip("woche","Diese Woche")+chip("letzteWoche","Letzte Woche")+
    chip("monat","Dieser Monat")+chip("30","Letzte 30 Tage")+chip("frei","Zeitraum wählen")+
   '</div>'+
-  (zeitraum==="frei"?'<div class="reihe" style="margin-bottom:10px">'+
-   '<div><label>Von</label><input type="date" id="dVon" value="'+von+'"></div>'+
-   '<div><label>Bis</label><input type="date" id="dBis" value="'+bis+'"></div></div>':"")+
+  (zeitraum==="frei"?'<div class="reihe" style="margin-bottom:12px">'+
+   '<div><label style="margin-top:0">Von</label><input type="date" id="dVon" value="'+von+'"></div>'+
+   '<div><label style="margin-top:0">Bis</label><input type="date" id="dBis" value="'+bis+'"></div></div>':"")+
 
   '<div class="kpi"><div><div class="w" style="color:var(--o)">'+esc(s.hours)+'</div>'+
-   '<div class="l">STUNDEN GESAMT</div></div>'+
-   '<div><div class="w">'+s.rows.length+'</div><div class="l">MITARBEITER</div></div>'+
+   '<div class="l">Stunden gesamt</div></div>'+
+   '<div><div class="w">'+s.rows.length+'</div><div class="l">Mitarbeiter</div></div>'+
    '<div><div class="w" style="color:'+(s.probleme?"var(--rot)":"var(--gruen)")+'">'+
-   s.probleme+'</div><div class="l">ZU PRÜFEN</div></div></div>'+
+   s.probleme+'</div><div class="l">Zu prüfen</div></div></div>'+
   '<div class="reihe" style="margin-top:12px">'+
    '<button class="btn" id="bNachtrag">+ Zeit nachtragen</button>'+
-   '<a class="btn g" style="text-align:center;text-decoration:none;padding:10px 16px" '+
+   '<a class="btn g" style="text-decoration:none" '+
     'href="api/chef/export.csv?von='+von+'&bis='+bis+'">CSV für Excel</a></div>'+
-  '<a class="btn voll g" style="text-align:center;text-decoration:none;padding:10px 16px" '+
+  '<a class="btn voll g" style="text-decoration:none" '+
    'target="_blank" href="api/chef/stundenzettel.pdf?von='+von+'&bis='+bis+
    (filterLoc?'&loc='+encodeURIComponent(filterLoc):'')+
-   '">Stundenzettel als PDF (für den Steuerberater)</a>'+
+   '">Stundenzettel als PDF (Steuerberater)</a>'+
   '<div class="hint">'+esc(von)+' bis '+esc(bis)+
   (s.autoBreak?" · Pausen automatisch abgezogen":"")+
   ' · Der Stundenzettel enthält je Mitarbeiter eine eigene Seite mit '+
@@ -407,10 +467,10 @@ function detail(empId){
  get("api/chef/detail?emp="+empId+"&von="+von+"&bis="+bis).then(function(d){
   if(d.fehler){zu();toast("Fehler");return;}
   var h='<div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">'+
-   avaHtml(d,d.status.in)+'<div><div style="font-size:19px;font-weight:800">'+esc(d.name)+'</div>'+
+   avaHtml(d,d.status.in)+'<div style="min-width:0"><div style="font-size:18px;font-weight:700">'+esc(d.name)+'</div>'+
    '<div style="font-size:12px;color:var(--mut)">Code '+esc(d.codeHint||"")+
    ' · '+esc(von)+' bis '+esc(bis)+'</div></div>'+
-   '<div style="margin-left:auto;font-size:22px;font-weight:800;color:var(--o)">'+
+   '<div style="margin-left:auto;font-size:20px;font-weight:700;color:var(--o);flex:0 0 auto">'+
    esc(d.hours)+' h</div></div>';
   if(!d.wochen.length)h+='<div class="leer">Keine Zeiten in diesem Zeitraum.</div>';
   d.wochen.forEach(function(w){
@@ -441,26 +501,28 @@ function problemText(p){
 /* ------------------------------ ZU PRÜFEN ------------------------------- */
 function zPruefen(){
  var pr=daten.probleme.filter(function(p){return !filterLoc||p.locId===filterLoc;});
- var h='<div class="karte"><h2>Zu prüfen ('+pr.length+')</h2>'+
-  '<div class="hint" style="margin-top:0">Hier sammelt sich alles, was nicht sauber '+
-  'gestempelt wurde: vergessenes Ausstempeln, automatisch beendete Schichten, '+
-  'fehlende Anfänge und ungewöhnlich lange Schichten. Erledigtes verschwindet von selbst.</div></div>';
+ var h='<div class="seitentitel">Zu prüfen'+
+  (pr.length?' <span class="warn" style="font-size:12px;padding:3px 9px">'+pr.length+'</span>':'')+
+  '</div>'+
+  '<div class="untertitel">Alles, was nicht sauber gestempelt wurde: vergessenes '+
+  'Ausstempeln, automatisch beendete Schichten, fehlende Anfänge, ungewöhnlich '+
+  'lange Schichten. Erledigtes verschwindet von selbst.</div>';
  if(!pr.length){
   $("tPruefen").innerHTML=h+'<div class="karte"><div class="leer">'+
    'Alles sauber – nichts zu tun.</div></div>';return;}
  pr.forEach(function(p){
-  h+='<div class="karte" style="padding:12px">'+
+  h+='<div class="karte" style="padding:14px">'+
    '<div style="display:flex;align-items:center;gap:11px">'+avaHtml(p,false)+
-   '<div style="flex:1;min-width:0"><div style="font-weight:650">'+esc(p.name)+'</div>'+
+   '<div style="flex:1;min-width:0"><div style="font-weight:600">'+esc(p.name)+'</div>'+
    '<div style="font-size:12px;color:var(--mut);margin-top:2px">'+esc(p.label)+' · '+
    (p.start?esc(p.start):"??:??")+' – '+(p.end?esc(p.end):"läuft")+'</div></div>'+
    '<span class="tag-warn tag-'+p.art+'">'+problemText(p.art)+'</span></div>'+
    (p.note?'<div class="hint">'+esc(p.note)+'</div>':"")+
-   '<div class="reihe" style="margin-top:10px">'+
-   '<button class="btn" onclick="bearbeite(\\''+p.empId+'\\',\\''+(p.startId||"")+
+   '<div class="reihe" style="margin-top:12px">'+
+   '<button class="btn klein" onclick="bearbeite(\\''+p.empId+'\\',\\''+(p.startId||"")+
     '\\',\\''+(p.endId||"")+'\\',\\''+p.day+'\\',\\''+esc(p.name)+'\\',\\''+
     (p.start||"")+'\\',\\''+(p.end||"")+'\\')">Korrigieren</button>'+
-   (p.art==="auto"?'<button class="btn g" onclick="passtSo(\\''+p.endId+'\\')">Passt so</button>':"")+
+   (p.art==="auto"?'<button class="btn klein g" onclick="passtSo(\\''+p.endId+'\\')">Passt so</button>':"")+
    '</div></div>';
  });
  $("tPruefen").innerHTML=h;
@@ -471,19 +533,20 @@ function passtSo(id){
 
 /* --------------------------------- TEAM --------------------------------- */
 function zTeam(){
- var h='<div class="karte"><h2>Mitarbeiter</h2>'+
-  '<div class="hint" style="margin-top:0">Jeder hat einen persönlichen Code aus '+
-  '2 Buchstaben und 4 Ziffern (z. B. AY1234). Am iPad im Laden reicht das Antippen '+
-  'des eigenen Fotos – der Code ist der Ersatzweg.</div></div><div class="karte">';
+ var h='<div class="seitentitel">Team'+
+  '<div class="rechts"><button class="btn klein" onclick="mitarbeiter(null)">+ Mitarbeiter</button></div>'+
+  '</div>'+
+  '<div class="untertitel">Jeder hat einen persönlichen Code aus 2 Buchstaben und '+
+  '4 Ziffern (z. B. AY1234). Am iPad im Laden reicht das Antippen des eigenen '+
+  'Fotos – der Code ist der Ersatzweg.</div>';
  daten.employees.forEach(function(e){
   h+='<div class="zeile" onclick="mitarbeiter(\\''+e.id+'\\')">'+avaHtml(e,false)+
    '<div class="txt"><div class="nm">'+esc(e.name)+
-   (e.active?"":' <span style="color:var(--mut);font-size:12px">(inaktiv)</span>')+'</div>'+
+   (e.active?"":' <span style="color:var(--mut);font-size:12px;font-weight:400">(inaktiv)</span>')+'</div>'+
    '<div class="sub">Code '+esc(e.codeHint||"–")+
    (e.locName?" · "+esc(e.locName):"")+'</div></div><div class="pfeil">›</div></div>';
  });
- if(!daten.employees.length)h+='<div class="leer">Noch niemand angelegt.</div>';
- h+='<button class="btn voll" onclick="mitarbeiter(null)">+ Mitarbeiter anlegen</button></div>';
+ if(!daten.employees.length)h+='<div class="karte"><div class="leer">Noch niemand angelegt.</div></div>';
  $("tTeam").innerHTML=h;
 }
 function mitarbeiter(id){
@@ -491,7 +554,7 @@ function mitarbeiter(id){
  var opts=daten.locations.map(function(l){
   return '<option value="'+l.id+'"'+(e&&e.locId===l.id?" selected":"")+'>'+
    esc(l.name)+'</option>';}).join("");
- modal('<h3 style="margin-top:0">'+(e?"Mitarbeiter bearbeiten":"Neuer Mitarbeiter")+'</h3>'+
+ modal('<h2>'+(e?"Mitarbeiter bearbeiten":"Neuer Mitarbeiter")+'</h2>'+
   '<label>Name</label><input id="mName" value="'+(e?esc(e.name):"")+'">'+
   '<label>Persönlicher Code'+(e?" (leer lassen = unverändert)":"")+'</label>'+
   '<div class="reihe"><input id="mCode" placeholder="z. B. AY1234" maxlength="6" '+
@@ -499,7 +562,7 @@ function mitarbeiter(id){
    '<button class="btn g" style="flex:0 0 auto" id="mWuerfel">Vorschlag</button></div>'+
   '<label>Standort</label><select id="mLoc">'+opts+'</select>'+
   '<label>Foto (optional)</label><input type="file" id="mFoto" accept="image/*">'+
-  (e?'<div class="tw" style="margin-top:12px"><div>Aktiv</div>'+
+  (e?'<div class="tw" style="margin-top:12px"><div class="t1">Aktiv</div>'+
    '<label class="schalter"><input type="checkbox" id="mAktiv"'+(e.active?" checked":"")+
    '><span class="b"></span></label></div>':"")+
   '<button class="btn voll" id="mSave">Speichern</button>'+
@@ -537,7 +600,7 @@ function mitarbeiter(id){
 
 /* ------------------------------ KORREKTUR ------------------------------- */
 function bearbeite(empId,startId,endId,day,name,start,end){
- modal('<h3 style="margin-top:0">Zeit ändern – '+esc(name)+'</h3>'+
+ modal('<h2>Zeit ändern – '+esc(name)+'</h2>'+
   '<div style="font-size:13px;color:var(--mut);margin-bottom:4px">'+esc(day)+'</div>'+
   (startId?'<label>Kommt</label><div class="reihe">'+
    '<input type="time" id="eStart" value="'+esc(start)+'">'+
@@ -577,7 +640,7 @@ function loesche(id){
 function nachtrag(){
  var opts=daten.employees.filter(function(e){return e.active;})
   .map(function(e){return '<option value="'+e.id+'">'+esc(e.name)+'</option>';}).join("");
- modal('<h3 style="margin-top:0">Zeit nachtragen</h3>'+
+ modal('<h2>Zeit nachtragen</h2>'+
   '<label>Mitarbeiter</label><select id="nEmp">'+opts+'</select>'+
   '<label>Tag</label><input type="date" id="nDay" value="'+heute()+'">'+
   '<div class="reihe"><div><label>Kommt</label><input type="time" id="nIn" value="10:00"></div>'+
@@ -595,17 +658,22 @@ function nachtrag(){
 }
 
 /* ----------------------------- EINSTELLUNGEN ---------------------------- */
+/*
+ * Zwei Ebenen:
+ *   1. Was der Laden-Chef braucht: Firma, Öffnungszeiten, Stempel-Regeln,
+ *      Standorte (Name + Zeiten), Mitteilungen, PIN, Protokoll.
+ *   2. Entwickler-Bereich (eigene PIN): Adressen, NFC-Aufkleber, QR-Codes,
+ *      Fernzugang, angemeldete Geräte. Kein Sicherheits-, ein Ordnungsding:
+ *      der Chef soll damit gar nicht erst in Berührung kommen.
+ */
 function zSetup(){
  var c=daten.config;
- var h='<div class="karte"><h2>Allgemein</h2>'+
+ var h='<div class="seitentitel">Einstellungen</div>';
+
+ h+='<div class="karte"><h2>Laden</h2>'+
   '<label>Firmenname</label><input id="sFirma" value="'+esc(c.firma)+'">'+
-  '<label>Öffentliche Adresse (Tailscale-Funnel, für Aufkleber und iPads)</label>'+
-  '<input id="sAdr" placeholder="https://…ts.net:8443" value="'+esc(c.oeffentlicheAdresse||"")+'">'+
-  '<div class="hint">Leer lassen, wenn alles im selben Netzwerk läuft. Für einen '+
-  'zweiten Laden muss hier die öffentliche Adresse stehen, sonst finden dessen '+
-  'iPad und Handys den Server nicht.</div>'+
-  '<div class="tw" style="margin-top:14px"><div><div>Pausen automatisch abziehen</div>'+
-  '<div style="font-size:12px;color:var(--mut);margin-top:3px">über 6 h: 30 min · über 9 h: 45 min</div></div>'+
+  '<div class="tw" style="margin-top:14px"><div><div class="t1">Pausen automatisch abziehen</div>'+
+  '<div class="t2">über 6 h: 30 min · über 9 h: 45 min</div></div>'+
   '<label class="schalter"><input type="checkbox" id="sBreak"'+(c.autoBreak?" checked":"")+
   '><span class="b"></span></label></div>'+
   '<label>Automatisch ausstempeln nach (Stunden, 0 = aus)</label>'+
@@ -617,25 +685,9 @@ function zSetup(){
   '<input id="sMax" type="number" min="4" max="24" value="'+c.maxShiftHours+'">'+
   '<button class="btn voll" id="sSave">Speichern</button></div>';
 
- h+='<div class="karte"><h2>Stempeln im Laden</h2>'+
-  '<div class="tw"><div><div>Nur im Laden stempeln</div>'+
-  '<div style="font-size:12px;color:var(--mut);margin-top:3px">'+
-  'Handys müssen vorher den Aufkleber berühren</div></div>'+
-  '<label class="schalter"><input type="checkbox" id="sPres"'+(c.requirePresence?" checked":"")+
-  '><span class="b"></span></label></div>'+
-  '<div class="tw"><div><div>Am iPad zusätzlich Code abfragen</div>'+
-  '<div style="font-size:12px;color:var(--mut);margin-top:3px">'+
-  'Sicherer, aber ein Schritt mehr</div></div>'+
-  '<label class="schalter"><input type="checkbox" id="sTerm"'+
-  (c.terminalRequireCode?" checked":"")+'><span class="b"></span></label></div>'+
-  '<label>Aufkleber gilt für (Minuten)</label>'+
-  '<input id="sMin" type="number" min="1" max="240" value="'+c.presenceMinutes+'">'+
-  '<button class="btn voll" id="sSave2">Speichern</button></div>'+
-
-  '<div class="karte"><h2>Öffnungszeiten</h2>'+
-  '<div class="tw"><div><div>Nur während der Öffnung stempeln</div>'+
-  '<div style="font-size:12px;color:var(--mut);margin-top:3px">'+
-  'Außerhalb wird das Stempeln abgelehnt</div></div>'+
+ h+='<div class="karte"><h2>Öffnungszeiten</h2>'+
+  '<div class="tw"><div><div class="t1">Nur während der Öffnung stempeln</div>'+
+  '<div class="t2">Außerhalb wird das Stempeln abgelehnt</div></div>'+
   '<label class="schalter"><input type="checkbox" id="sOef"'+(c.oeffnungAktiv?" checked":"")+
   '><span class="b"></span></label></div>'+
   '<div class="reihe"><div><label>Von</label>'+
@@ -647,75 +699,169 @@ function zSetup(){
   '(z. B. 11:00 bis 02:00) werden richtig erkannt.</div>'+
   '<button class="btn voll" id="sSave3">Speichern</button></div>';
 
- h+='<div class="karte"><h2>Standorte, iPads &amp; Aufkleber</h2>';
+ h+='<div class="karte"><h2>Stempeln im Laden</h2>'+
+  '<div class="tw"><div><div class="t1">Nur im Laden stempeln</div>'+
+  '<div class="t2">Handys müssen vorher den Aufkleber am Eingang berühren</div></div>'+
+  '<label class="schalter"><input type="checkbox" id="sPres"'+(c.requirePresence?" checked":"")+
+  '><span class="b"></span></label></div>'+
+  '<div class="tw"><div><div class="t1">Am iPad zusätzlich Code abfragen</div>'+
+  '<div class="t2">Sicherer, aber ein Schritt mehr</div></div>'+
+  '<label class="schalter"><input type="checkbox" id="sTerm"'+
+  (c.terminalRequireCode?" checked":"")+'><span class="b"></span></label></div>'+
+  '<label>Aufkleber gilt für (Minuten)</label>'+
+  '<input id="sMin" type="number" min="1" max="240" value="'+c.presenceMinutes+'">'+
+  '<button class="btn voll" id="sSave2">Speichern</button></div>';
+
+ /* ---- Standorte: nur Name + Öffnungszeiten. Adressen liegen beim Entwickler. ---- */
+ h+='<div class="karte"><h2>Standorte</h2>'+
+  '<div class="untertitel">Je Laden ein Standort. Das iPad und die Aufkleber des '+
+  'Standorts richtet der Entwickler ein – hier geht es nur um Name und Zeiten.</div>';
  daten.locations.forEach(function(l){
-  h+='<div style="border:1px solid var(--li);border-radius:12px;padding:13px;margin-bottom:11px">'+
+  h+='<div style="border:1px solid var(--li);border-radius:13px;padding:14px;margin-bottom:11px">'+
    '<div class="reihe"><input value="'+esc(l.name)+'" id="ln_'+l.id+'">'+
-   '<button class="btn g" style="flex:0 0 auto" onclick="standortSpeichern(\\''+l.id+'\\')">Name speichern</button></div>'+
-   '<div class="tw" style="margin-top:10px"><div><div>Eigene Öffnungszeiten</div>'+
-   '<div style="font-size:12px;color:var(--mut);margin-top:3px">sonst gilt die allgemeine Einstellung</div></div>'+
+   '<button class="btn g" style="flex:0 0 auto" onclick="standortSpeichern(\\''+l.id+'\\')">Speichern</button></div>'+
+   '<div class="tw" style="margin-top:8px"><div><div class="t1">Eigene Öffnungszeiten</div>'+
+   '<div class="t2">sonst gilt die allgemeine Einstellung</div></div>'+
    '<label class="schalter"><input type="checkbox" id="lo_'+l.id+'"'+(l.oeffnungAktiv?" checked":"")+
    '><span class="b"></span></label></div>'+
-   '<div class="reihe"><div><label>Von</label><input type="time" id="lv_'+l.id+'" value="'+
-   esc(l.oeffnungVon||"09:00")+'"></div><div><label>Bis</label><input type="time" id="lb_'+l.id+
+   '<div class="reihe"><div><label style="margin-top:4px">Von</label><input type="time" id="lv_'+l.id+'" value="'+
+   esc(l.oeffnungVon||"09:00")+'"></div><div><label style="margin-top:4px">Bis</label><input type="time" id="lb_'+l.id+
    '" value="'+esc(l.oeffnungBis||"23:00")+'"></div></div>'+
-   '<div style="font-size:12px;color:var(--mut);margin:11px 0 4px">'+
-   'iPad in diesem Laden — einmal öffnen, <b>warten bis die Kacheln erscheinen</b>, '+
-   'dann „Teilen → Zum Home-Bildschirm“:</div>'+
-   '<div class="code">'+esc(daten.basis)+'/terminal/'+esc(l.token)+'</div>'+
-   '<div style="font-size:12px;color:var(--mut);margin:9px 0 4px">NFC-Aufkleber am Eingang:</div>'+
-   '<div class="code">'+esc(daten.basis)+'/s/'+esc(l.token)+'</div>'+
-   '<div class="reihe" style="margin-top:9px">'+
-   '<button class="btn g" onclick="qr(\\''+esc(l.token)+'\\',\\''+esc(l.name)+'\\')">QR zeigen</button>'+
-   '<button class="btn g" onclick="neuerToken(\\''+l.id+'\\')">Sticker-Code neu vergeben</button>'+
-   (daten.locations.length>1?'<button class="btn g" onclick="standortWeg(\\''+l.id+
-     '\\')">Löschen</button>':"")+'</div></div>';
+   (daten.locations.length>1?'<button class="btn klein rotly" style="margin-top:10px" '+
+    'onclick="standortWeg(\\''+l.id+'\\')">Standort löschen</button>':"")+
+   '</div>';
  });
- h+='<button class="btn voll g" onclick="neuerStandort()">+ Standort anlegen</button>'+
-  '<div class="hint"><b>Der Sticker-Code ist fest</b> und ändert sich nie von '+
-  'allein — nur die Adresse dahinter wechselt bei jedem Antippen automatisch. '+
-  '„Sticker-Code neu vergeben“ ist der Notfall-Knopf, falls ein Code kursiert: '+
-  'danach müssen alle Aufkleber dieses Ladens neu beschrieben werden. '+
-  '<b>Das iPad läuft weiter</b> — seine Berechtigung steckt im Gerät, nicht in '+
-  'der Adresse (nach dem Einrichten steht dort nur noch …/terminal).</div></div>';
+ h+='<button class="btn voll g" onclick="neuerStandort()">+ Standort anlegen</button></div>';
 
- /* ---- Mitteilungen aufs Handy ---- */
+ /* ---- Mitteilungen ---- */
  h+='<div class="karte"><h2>Mitteilungen aufs Handy</h2>'+
-  '<div class="tw"><div><div>Dieses Gerät benachrichtigen</div>'+
-  '<div style="font-size:12px;color:var(--mut);margin-top:3px" id="pushT">'+
-  'Ohne fremden Dienst, direkt vom Laden-PC.</div></div>'+
+  '<div class="tw"><div><div class="t1">Dieses Gerät benachrichtigen</div>'+
+  '<div class="t2" id="pushT">Ohne fremden Dienst, direkt vom Laden-PC.</div></div>'+
   '<label class="schalter"><input type="checkbox" id="pushAn"><span class="b"></span></label></div>'+
-  '<div class="tw"><div><div>Ausstempeln vergessen</div>'+
-  '<div style="font-size:12px;color:var(--mut);margin-top:3px">'+
-  'sobald jemand automatisch ausgestempelt wurde</div></div>'+
+  '<div class="tw"><div><div class="t1">Ausstempeln vergessen</div>'+
+  '<div class="t2">sobald jemand automatisch ausgestempelt wurde</div></div>'+
   '<label class="schalter"><input type="checkbox" id="sMVerg"'+
   (c.meldeVergessen?" checked":"")+'><span class="b"></span></label></div>'+
-  '<div class="tw"><div><div>Nicht erschienen</div>'+
-  '<div style="font-size:12px;color:var(--mut);margin-top:3px">'+
-  'geplante Schicht läuft, aber niemand hat gestempelt</div></div>'+
+  '<div class="tw"><div><div class="t1">Nicht erschienen</div>'+
+  '<div class="t2">geplante Schicht läuft, aber niemand hat gestempelt</div></div>'+
   '<label class="schalter"><input type="checkbox" id="sMNicht"'+
   (c.meldeNichtDa?" checked":"")+'><span class="b"></span></label></div>'+
   '<label>Melden nach (Minuten Verspätung)</label>'+
   '<input id="sNichtNach" type="number" min="1" max="180" value="'+(c.nichtDaNach||15)+'">'+
   '<label>Schichtplan vorausplanen (Wochen)</label>'+
   '<input id="sPlanW" type="number" min="1" max="26" value="'+(c.planWochen||4)+'">'+
-  '<div class="hint">Serien laufen so viele Wochen automatisch voraus.</div>'+
-  '<button class="btn voll" id="sSave4">Speichern</button>';
- if(daten.abos&&daten.abos.length){
-  h+='<h3>Angemeldete Geräte</h3>';
-  daten.abos.forEach(function(a){
-   h+='<div style="font-size:12.5px;color:var(--mut);padding:5px 0;'+
-    'border-bottom:1px solid rgba(255,255,255,.05)"><b style="color:var(--txt)">'+
-    esc(a.name)+'</b> · '+esc(a.geraet||"Gerät")+' · '+esc(a.dienst)+'</div>';});
+  '<div class="hint">Serien laufen so viele Wochen automatisch voraus. '+
+  '<b>Auf dem iPhone</b> kommen Mitteilungen nur an, wenn diese Seite über '+
+  '„Teilen → Zum Home-Bildschirm“ abgelegt und von dort geöffnet wird. '+
+  'Die Mitarbeiter schalten es unter „Mein Plan“ auf ihrem eigenen Handy ein.</div>'+
+  '<button class="btn voll" id="sSave4">Speichern</button></div>';
+
+ h+='<div class="karte"><h2>Chef-PIN ändern</h2>'+
+  '<label>Neue PIN (4–8 Ziffern)</label><input id="nPin" type="password" inputmode="numeric">'+
+  '<button class="btn voll g" id="nPinSave">PIN ändern</button></div>';
+
+ /* ---- Protokoll ---- */
+ h+='<div class="karte"><h2>Protokoll</h2>'+
+  '<div class="untertitel">Jede Korrektur wird dauerhaft festgehalten – so bleibt '+
+  'nachvollziehbar, wer wann was geändert hat.</div><div class="log">';
+ if(!daten.audit.length)h+='<div class="leer">Noch keine Änderungen.</div>';
+ daten.audit.slice().reverse().forEach(function(a){
+  h+='<div class="eintrag"><div class="z">'+esc(a.zeit)+'</div>'+
+   '<div class="w">'+esc(a.what)+'</div>'+
+   '<div class="d">'+esc(a.detail)+'</div></div>';});
+ h+='</div></div>';
+
+ /* ---- Entwickler-Bereich ---- */
+ if(!devFrei){
+  h+='<button class="devauf" id="devAuf">'+
+   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>'+
+   'Entwickler-Einstellungen</button>';
+ }else{
+  h+=zDev(c);
  }
- h+='<div class="hint"><b>Auf dem iPhone</b> geht das nur, wenn diese Seite über '+
-  '„Teilen → Zum Home-Bildschirm“ abgelegt und von dort geöffnet wird – so will '+
-  'es Apple. Auf Android läuft es sofort. Die Mitarbeiter schalten es unter '+
-  '„Mein Plan“ auf ihrem eigenen Handy ein.</div></div>';
+
+ $("tSetup").innerHTML=h;
+
+ var speichern=function(){
+  api("api/chef/config",{firma:$("sFirma").value,autoBreak:$("sBreak").checked,
+   autoOutHours:Number($("sAuto").value),maxShiftHours:Number($("sMax").value),
+   requirePresence:$("sPres").checked,terminalRequireCode:$("sTerm").checked,
+   oeffnungAktiv:$("sOef").checked,oeffnungVon:$("sVon").value,
+   oeffnungBis:$("sBis").value,oeffnungPuffer:Number($("sPuf").value),
+   presenceMinutes:Number($("sMin").value)}).then(function(){toast("Gespeichert");laden();});
+ };
+ $("sSave").onclick=speichern;$("sSave2").onclick=speichern;$("sSave3").onclick=speichern;
+ $("sSave4").onclick=function(){
+  api("api/chef/config",{meldeVergessen:$("sMVerg").checked,meldeNichtDa:$("sMNicht").checked,
+   nichtDaNach:Number($("sNichtNach").value),planWochen:Number($("sPlanW").value)})
+   .then(function(){toast("Gespeichert");laden();});
+ };
+ chefPushVorbereiten();
+ $("nPinSave").onclick=function(){
+  var p=$("nPin").value;
+  if(!/^\\d{4,8}$/.test(p)){toast("4 bis 8 Ziffern bitte");return;}
+  api("api/chef/chefpin",{pin:p}).then(function(){toast("Chef-PIN geändert");$("nPin").value="";});
+ };
+ if($("devAuf"))$("devAuf").onclick=devFrage;
+ if(devFrei)devBinden();
+}
+
+/* ------------------------- Entwickler-Bereich --------------------------- */
+function devFrage(){
+ modal('<h2>Entwickler-Einstellungen</h2>'+
+  '<div class="untertitel">Adressen, Aufkleber, Fernzugang – nichts für den '+
+  'Alltag. Bitte die Entwickler-PIN eingeben.</div>'+
+  '<input id="devPin" type="password" inputmode="numeric" '+
+  'style="text-align:center;font-size:20px;letter-spacing:.28em" placeholder="••••">'+
+  '<div id="devFehler" style="color:var(--rot);font-size:13px;margin-top:8px;min-height:16px"></div>'+
+  '<button class="btn voll" id="devLos">Öffnen</button>'+
+  '<button class="btn voll g" onclick="zu()">Abbrechen</button>');
+ var los=function(){
+  api("api/chef/dev-pin",{pin:$("devPin").value}).then(function(r){
+   if(!r.ok){$("devFehler").textContent="PIN stimmt nicht.";$("devPin").value="";return;}
+   devFrei=true;
+   try{sessionStorage.setItem("zeit-dev","1");}catch(e){}
+   zu();zSetup();
+   toast("Entwickler-Bereich sichtbar");
+  });
+ };
+ $("devLos").onclick=los;
+ $("devPin").addEventListener("keydown",function(e){if(e.key==="Enter")los();});
+ setTimeout(function(){$("devPin").focus();},60);
+}
+function zDev(c){
+ var h='<h3 style="margin-top:26px">Entwickler</h3>';
+
+ h+='<div class="karte dev"><h2>Öffentliche Adresse<span class="devtag">Dev</span></h2>'+
+  '<div class="untertitel">Tailscale-Funnel-Adresse für Aufkleber und iPads. '+
+  'Leer lassen, wenn alles im selben Netzwerk läuft. Für einen zweiten Laden '+
+  'muss sie gesetzt sein, sonst finden dessen Geräte den Server nicht.</div>'+
+  '<input id="sAdr" placeholder="https://…ts.net:8443" value="'+esc(c.oeffentlicheAdresse||"")+'">'+
+  '<button class="btn voll" id="devAdrSave">Speichern</button></div>';
+
+ h+='<div class="karte dev"><h2>Adressen &amp; Aufkleber<span class="devtag">Dev</span></h2>';
+ daten.locations.forEach(function(l){
+  h+='<div style="border:1px solid var(--li);border-radius:13px;padding:14px;margin-bottom:11px">'+
+   '<div style="font-weight:650;margin-bottom:8px">'+esc(l.name)+'</div>'+
+   '<div class="hint" style="margin:0 0 4px">iPad in diesem Laden – einmal öffnen, '+
+   '<b>warten bis die Kacheln erscheinen</b>, dann „Teilen → Zum Home-Bildschirm“:</div>'+
+   '<div class="code">'+esc(daten.basis)+'/terminal/'+esc(l.token)+'</div>'+
+   '<div class="hint" style="margin:8px 0 4px">NFC-Aufkleber am Eingang:</div>'+
+   '<div class="code">'+esc(daten.basis)+'/s/'+esc(l.token)+'</div>'+
+   '<div class="reihe" style="margin-top:10px">'+
+   '<button class="btn klein g" onclick="qr(\\''+esc(l.token)+'\\',\\''+esc(l.name)+'\\')">QR zeigen</button>'+
+   '<button class="btn klein g" onclick="neuerToken(\\''+l.id+'\\')">Sticker-Code neu</button>'+
+   '</div></div>';
+ });
+ h+='<div class="hint"><b>Der Sticker-Code ist fest</b> und ändert sich nie von '+
+  'allein — nur die Adresse dahinter wechselt bei jedem Antippen automatisch. '+
+  '„Sticker-Code neu“ ist der Notfall-Knopf, falls ein Code kursiert: danach '+
+  'müssen alle Aufkleber dieses Ladens neu beschrieben werden. <b>Das iPad läuft '+
+  'weiter</b> — seine Berechtigung steckt im Gerät, nicht in der Adresse.</div></div>';
 
  /* ---- Chef von unterwegs (offenes Internet) ---- */
  var f=daten.fern||{};
- h+='<div class="karte"><h2>Chef von unterwegs</h2>';
+ h+='<div class="karte dev"><h2>Chef von unterwegs<span class="devtag">Dev</span></h2>';
  if(daten.fernModus){
   h+='<div class="hint">Du bist gerade von unterwegs angemeldet. Diese '+
    'Einstellung lässt sich nur im Laden oder über Tailscale ändern – '+
@@ -723,18 +869,17 @@ function zSetup(){
    'einen Zugang bauen.</div>';
   if(f.aktiv)h+='<div class="code">'+esc(f.adresse||"")+'</div>';
  }else{
-  h+='<div class="tw"><div><div>Dashboard aus dem Internet erreichbar</div>'+
-   '<div style="font-size:12px;color:var(--mut);margin-top:3px">'+
-   'ohne Tailscale, von jedem Handy</div></div>'+
+  h+='<div class="tw"><div><div class="t1">Dashboard aus dem Internet erreichbar</div>'+
+   '<div class="t2">ohne Tailscale, von jedem Handy</div></div>'+
    '<label class="schalter"><input type="checkbox" id="fAn"'+(f.aktiv?" checked":"")+
    '><span class="b"></span></label></div>';
   if(f.aktiv){
-   h+='<div style="font-size:12px;color:var(--mut);margin:11px 0 4px">'+
-    'Deine geheime Adresse – <b>einmal pro Gerät</b> öffnen, danach reicht '+
-    'das Lesezeichen:</div><div class="code">'+esc(f.adresse||"")+'</div>'+
-    '<div class="reihe" style="margin-top:9px">'+
-    '<button class="btn g" id="fQr">QR zeigen</button>'+
-    '<button class="btn g" id="fNeu">Neue geheime Adresse</button></div>'+
+   h+='<div class="hint" style="margin:10px 0 4px">Deine geheime Adresse – '+
+    '<b>einmal pro Gerät</b> öffnen, danach reicht das Lesezeichen:</div>'+
+    '<div class="code">'+esc(f.adresse||"")+'</div>'+
+    '<div class="reihe" style="margin-top:10px">'+
+    '<button class="btn klein g" id="fQr">QR zeigen</button>'+
+    '<button class="btn klein g" id="fNeu">Neue geheime Adresse</button></div>'+
     '<label style="margin-top:14px">Passwort ändern (min. 10 Zeichen)</label>'+
     '<input id="fPw" type="password" autocomplete="new-password">'+
     '<button class="btn voll g" id="fPwSave">Passwort ändern</button>';
@@ -743,7 +888,7 @@ function zSetup(){
     h+='<div style="margin-top:14px;font-size:12.5px;color:var(--rot)">'+
      '<b>Fehlversuche:</b></div>';
     fv.slice(0,5).forEach(function(x){
-     h+='<div style="font-size:12px;color:var(--mut);padding:3px 0">'+esc(x.ip)+
+     h+='<div style="font-size:12px;color:var(--mut);padding:3px 0;overflow-wrap:anywhere">'+esc(x.ip)+
       ' · '+x.n+'× · '+new Date(x.letzte).toLocaleString("de-DE")+
       (x.gesperrtBis?' · <b style="color:var(--rot)">gesperrt</b>':'')+'</div>';});
    }
@@ -764,42 +909,41 @@ function zSetup(){
  }
  h+='</div>';
 
- h+='<div class="karte"><h2>Chef-PIN ändern</h2>'+
-  '<label>Neue PIN (4–8 Ziffern)</label><input id="nPin" type="password" inputmode="numeric">'+
-  '<button class="btn voll g" id="nPinSave">PIN ändern</button></div>';
+ /* ---- Angemeldete Geraete ---- */
+ h+='<div class="karte dev"><h2>Angemeldete Geräte<span class="devtag">Dev</span></h2>';
+ if(daten.abos&&daten.abos.length){
+  daten.abos.forEach(function(a){
+   h+='<div style="font-size:12.5px;color:var(--mut);padding:6px 0;'+
+    'border-bottom:1px solid var(--li);overflow-wrap:anywhere"><b style="color:var(--txt)">'+
+    esc(a.name)+'</b> · '+esc(a.geraet||"Gerät")+' · '+esc(a.dienst)+'</div>';});
+ }else h+='<div class="leer">Noch kein Gerät für Mitteilungen angemeldet.</div>';
+ h+='</div>';
 
- h+='<div class="karte"><h2>Letzte Änderungen</h2>';
- if(!daten.audit.length)h+='<div class="leer">Noch keine Änderungen.</div>';
- daten.audit.slice().reverse().slice(0,25).forEach(function(a){
-  h+='<div style="font-size:12.5px;color:var(--mut);padding:6px 0;'+
-   'border-bottom:1px solid rgba(255,255,255,.05)">'+esc(a.zeit)+' · '+
-   '<b style="color:var(--txt)">'+esc(a.what)+'</b> · '+esc(a.detail)+'</div>';});
- h+='<div class="hint">Korrekturen werden dauerhaft protokolliert – so bleibt '+
-  'nachvollziehbar, wer wann etwas geändert hat.</div></div>';
+ h+='<div class="karte dev"><h2>Entwickler-PIN<span class="devtag">Dev</span></h2>'+
+  '<label>Neue Entwickler-PIN (4–8 Ziffern)</label>'+
+  '<input id="devPinNeu" type="password" inputmode="numeric">'+
+  '<button class="btn voll g" id="devPinSave">Ändern</button></div>';
 
- $("tSetup").innerHTML=h;
- var speichern=function(){
-  api("api/chef/config",{firma:$("sFirma").value,oeffentlicheAdresse:$("sAdr").value,autoBreak:$("sBreak").checked,
-   autoOutHours:Number($("sAuto").value),maxShiftHours:Number($("sMax").value),
-   requirePresence:$("sPres").checked,terminalRequireCode:$("sTerm").checked,
-   oeffnungAktiv:$("sOef").checked,oeffnungVon:$("sVon").value,
-   oeffnungBis:$("sBis").value,oeffnungPuffer:Number($("sPuf").value),
-   presenceMinutes:Number($("sMin").value)}).then(function(){toast("Gespeichert");laden();});
+ h+='<button class="devauf" id="devZu">Entwickler-Bereich ausblenden</button>';
+ return h;
+}
+function devBinden(){
+ $("devZu").onclick=function(){
+  devFrei=false;
+  try{sessionStorage.removeItem("zeit-dev");}catch(e){}
+  zSetup();
  };
- $("sSave").onclick=speichern;$("sSave2").onclick=speichern;$("sSave3").onclick=speichern;
- $("sSave4").onclick=function(){
-  api("api/chef/config",{meldeVergessen:$("sMVerg").checked,meldeNichtDa:$("sMNicht").checked,
-   nichtDaNach:Number($("sNichtNach").value),planWochen:Number($("sPlanW").value)})
+ $("devAdrSave").onclick=function(){
+  api("api/chef/config",{oeffentlicheAdresse:$("sAdr").value})
    .then(function(){toast("Gespeichert");laden();});
  };
- chefPushVorbereiten();
- $("nPinSave").onclick=function(){
-  var p=$("nPin").value;
+ $("devPinSave").onclick=function(){
+  var p=$("devPinNeu").value;
   if(!/^\\d{4,8}$/.test(p)){toast("4 bis 8 Ziffern bitte");return;}
-  api("api/chef/chefpin",{pin:p}).then(function(){toast("Chef-PIN geändert");$("nPin").value="";});
+  api("api/chef/dev-pin-neu",{pin:p}).then(function(r){
+   if(!r.ok){toast(r.fehler||"Fehler");return;}
+   toast("Entwickler-PIN geändert");$("devPinNeu").value="";});
  };
-
- /* ---- Chef von unterwegs ---- */
  if($("fPwSave"))$("fPwSave").onclick=function(){
   var p=$("fPw").value||"";
   if(p.length<10){toast("Mindestens 10 Zeichen");return;}
@@ -829,7 +973,7 @@ function zSetup(){
  };
  if($("fQr"))$("fQr").onclick=function(){
   var u=(daten.fern||{}).adresse||"";
-  modal('<h3 style="margin-top:0">Chef von unterwegs</h3>'+
+  modal('<h2>Chef von unterwegs</h2>'+
    '<div class="mitte">'+
    '<div style="background:#fff;padding:13px;border-radius:14px;display:inline-block">'+
    '<img src="https://api.qrserver.com/v1/create-qr-code/?size=460x460&margin=1&data='+
@@ -840,6 +984,7 @@ function zSetup(){
    '<button class="btn voll g" onclick="zu()">Schließen</button>');
  };
 }
+
 /* ------------------------ Mitteilungen für den Chef ---------------------- */
 /*
  * Nichts als der Browser: er meldet sich beim Push-Dienst seines Herstellers
@@ -900,7 +1045,7 @@ function chefB64(s){
 function qr(tok,name){
  var url=daten.basis+"/terminal/"+tok;
  var url2=daten.basis+"/z/"+tok;
- modal('<h3 style="margin-top:0">'+esc(name)+'</h3>'+
+ modal('<h2>'+esc(name)+'</h2>'+
   '<div class="mitte"><div style="font-size:12px;color:var(--mut);margin-bottom:8px">'+
   'NFC / QR für den Eingang</div>'+
   '<div style="background:#fff;padding:13px;border-radius:14px;display:inline-block">'+

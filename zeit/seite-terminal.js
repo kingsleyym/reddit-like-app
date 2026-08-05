@@ -20,25 +20,24 @@
  */
 
 const { MEIN_CSS, MEIN_JS } = require("./seite-mein");
+const { TOKENS_CSS, THEMA_JS } = require("./design");
 
 const TERMINAL_HTML = `<!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#05070c">
+<meta name="theme-color" content="#0B0D12" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F4F4F6" media="(prefers-color-scheme: light)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Stempeluhr">
 <title>Stempeluhr – Terminal</title>
 <style>
-:root{--o:#EB5A21;--gruen:#2fbf5f;--rot:#e0483c;--bg:#05070c;--fl:#0d1320;--li:#2a3550;}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{margin:0;height:100%;background:var(--bg);color:#f0f4f8;overflow:hidden;
- font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
- -webkit-user-select:none;user-select:none;}
+${TOKENS_CSS}
+html,body{height:100%;overflow:hidden;-webkit-user-select:none;user-select:none;}
 .wrap{position:fixed;inset:0;display:flex;flex-direction:column;
  padding:max(16px,env(safe-area-inset-top)) 20px max(16px,env(safe-area-inset-bottom));}
 .kopf{display:flex;align-items:flex-end;justify-content:space-between;flex:0 0 auto;
- padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.08);}
+ padding-bottom:14px;border-bottom:1px solid var(--li);}
 .firma{font-size:17px;letter-spacing:.22em;text-transform:uppercase;opacity:.6;}
 .firma b{color:var(--o);}
 .uhr{text-align:right;}
@@ -47,13 +46,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:#f0f4f8;overflow:hidde
 .gitter{flex:1 1 auto;overflow-y:auto;display:grid;gap:16px;padding:18px 2px;
  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));align-content:start;}
 .kachel{background:var(--fl);border:2px solid var(--li);border-radius:20px;
- padding:16px 10px 14px;text-align:center;position:relative;overflow:hidden;}
+ padding:16px 10px 14px;text-align:center;position:relative;overflow:hidden;
+ box-shadow:var(--schatten);}
 .kachel:active{transform:scale(.97);}
-.kachel.da{border-color:var(--gruen);background:rgba(47,191,95,.09);}
+.kachel.da{border-color:var(--gruen);background:var(--gruen-weich);}
 .kachel .bild{width:92px;height:92px;border-radius:50%;margin:0 auto 11px;
- overflow:hidden;background:#182136;border:3px solid var(--li);
+ overflow:hidden;background:var(--fl2);border:3px solid var(--li2);
  display:flex;align-items:center;justify-content:center;font-size:32px;
- font-weight:800;color:#5c7096;}
+ font-weight:800;color:var(--mut);}
 .kachel.da .bild{border-color:var(--gruen);color:var(--gruen);}
 .kachel .bild img{width:100%;height:100%;object-fit:cover;}
 .kachel .nm{font-size:17px;font-weight:700;line-height:1.25;
@@ -61,8 +61,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:#f0f4f8;overflow:hidde
 .kachel .st{font-size:12.5px;margin-top:5px;letter-spacing:.05em;opacity:.6;}
 .kachel.da .st{color:var(--gruen);opacity:1;font-weight:600;}
 .fuss{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
- padding-top:12px;border-top:1px solid rgba(255,255,255,.08);font-size:12px;opacity:.4;}
-.fuss button{background:none;border:1px solid var(--li);color:#8b98b8;border-radius:8px;
+ padding-top:12px;border-top:1px solid var(--li);font-size:12px;color:var(--mut);gap:8px;}
+.fuss button{background:none;border:1px solid var(--li);color:var(--mut);border-radius:8px;
  padding:7px 13px;font-size:12px;font-family:inherit;}
 /* Tages-Code: nur hier im Laden sichtbar - damit ist er der Beweis,
    dass jemand wirklich da war. */
@@ -71,12 +71,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:#f0f4f8;overflow:hidde
 #tagesCode .w{font-size:26px;font-weight:800;color:var(--o);letter-spacing:.22em;
  font-variant-numeric:tabular-nums;}
 /* Overlay: Bestaetigung + Code */
-.over{position:fixed;inset:0;background:rgba(5,7,12,.97);z-index:50;display:none;
+.over{position:fixed;inset:0;background:var(--bg);z-index:50;display:none;
  flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center;}
 .over.auf{display:flex;}
 .gbild{width:150px;height:150px;border-radius:50%;overflow:hidden;margin-bottom:20px;
  border:5px solid var(--o);display:flex;align-items:center;justify-content:center;
- font-size:54px;font-weight:800;color:var(--o);background:#182136;}
+ font-size:54px;font-weight:800;color:var(--o);background:var(--fl2);}
 .gbild img{width:100%;height:100%;object-fit:cover;}
 .gname{font-size:38px;font-weight:800;letter-spacing:.02em;}
 .gfrage{font-size:19px;opacity:.65;margin-top:9px;}
@@ -84,7 +84,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:#f0f4f8;overflow:hidde
  font-size:27px;font-weight:800;letter-spacing:.14em;padding:32px 60px;min-width:320px;}
 .knopf.rein{background:var(--gruen);box-shadow:0 12px 40px rgba(47,191,95,.35);}
 .knopf.raus{background:var(--rot);box-shadow:0 12px 40px rgba(224,72,60,.35);}
-.klein{margin-top:20px;background:none;border:none;color:#8b98b8;font-size:16px;
+.klein{margin-top:20px;background:none;border:none;color:var(--mut);font-size:16px;
  font-family:inherit;padding:12px 26px;}
 .haken{width:150px;height:150px;border-radius:50%;display:flex;align-items:center;
  justify-content:center;font-size:74px;margin-bottom:22px;}
@@ -95,7 +95,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:#f0f4f8;overflow:hidde
 .codefeld{font-size:38px;letter-spacing:.32em;font-weight:800;margin:22px 0 6px;
  min-height:48px;font-variant-numeric:tabular-nums;}
 .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:300px;margin-top:10px;}
-.pad button{background:var(--fl);border:1px solid var(--li);border-radius:16px;color:#fff;
+.pad button{background:var(--fl);border:1px solid var(--li);border-radius:16px;color:var(--txt);
  font-size:26px;font-weight:600;font-family:inherit;padding:18px 0;}
 .fehler{color:var(--rot);font-size:16px;margin-top:14px;min-height:22px;}
 .leer{grid-column:1/-1;text-align:center;padding:60px 20px;opacity:.5;font-size:16px;}
@@ -124,7 +124,8 @@ ${MEIN_CSS}
  <div class="fuss">
   <div id="zaehler"></div>
   <div id="tagesCode"></div>
-  <div><button id="btnCode">Code eingeben</button>
+  <div><button id="btnThema" data-thema-knopf></button>
+      <button id="btnCode">Code eingeben</button>
       <button class="meinBtn" id="btnMein">Mein Plan</button></div>
  </div>
 </div>
@@ -133,6 +134,7 @@ ${MEIN_CSS}
 <div class="mein" id="mein"></div>
 
 <script>
+${THEMA_JS}
 function $(i){return document.getElementById(i);}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){
  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
@@ -171,8 +173,8 @@ setInterval(uhr,1000);uhr();
 
 function laden(){
  fetch("/api/terminal/liste").then(function(r){return r.json();}).then(function(d){
-  if(d.fehler){document.body.innerHTML='<div style="padding:40px;text-align:center;'+
-   'font-family:Arial;color:#fff"><div style="font-size:54px">📍</div>'+
+  if(d.fehler){document.body.innerHTML='<div style="padding:40px;text-align:center">'+
+   '<div style="font-size:54px">📍</div>'+
    '<h2>Bitte am Eingang antippen</h2>'+
    '<div style="opacity:.6;line-height:1.6">Halte dein Handy kurz an den NFC-Aufkleber '+
    'im Laden – dann öffnet sich diese Seite von selbst.</div></div>';return;}
@@ -351,6 +353,8 @@ $("btnCode").onclick=function(){
 ${MEIN_JS}
 
 $("btnMein").onclick=meinOeffnen;
+$("btnThema").onclick=themaWechsel;
+themaKnopfMalen($("btnThema"));
 laden();
 </script></body></html>`;
 

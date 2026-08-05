@@ -138,9 +138,41 @@ ist für die Fälle gedacht, in denen Tailscale nicht auf dem Gerät ist.
 | **Jetzt** | Wer ist gerade im Laden, seit wann, laufende Stunden |
 | **Zeiten** | Zeitraum wählen → **eine Zeile je Mitarbeiter**. Details erst auf Klick |
 | **Zu prüfen** | Arbeitsliste aller Unstimmigkeiten — hier passiert das Korrigieren |
-| **Schichtplan** | Wochenplan, Schichtarten, Serien, offene Schichten, Meldungen |
+| **Schichtplan** | Wochenplan, Schichtarten, Serien, offene Schichten, Meldungen, Soll gegen Ist |
 | **Team** | Mitarbeiter anlegen, Code vergeben, Foto, Standort, aktiv/inaktiv |
-| **Einstellungen** | Firma, Anwesenheit, Pausen, Auto-Ausstempeln, iPad/NFC, Mitteilungen, Fernzugang, Chef-PIN |
+| **Einstellungen** | Firma, Öffnungszeiten, Pausen, Auto-Ausstempeln, Standorte, Mitteilungen, Chef-PIN, Protokoll |
+
+### Aussehen
+
+Eine Oberfläche, zwei Farbwelten: **Hell und Dunkel**. Standard ist die
+Einstellung des Geräts; der Sonne/Mond-Knopf (Seitenleiste bzw. Kopfzeile,
+auch am iPad-Terminal) schaltet um und merkt sich die Wahl im Browser.
+
+Die Schrift (Inter) liefert der Server selbst aus (`zeit/schrift.woff2`) —
+kein fremder Dienst, funktioniert ohne Internet. Fehlt die Datei, springt
+die Systemschrift ein.
+
+Am grossen Bildschirm gibt es eine feste Seitenleiste links, am Handy eine
+App-Leiste unten — dieselben Reiter, derselbe Inhalt.
+
+### Entwickler-Bereich (in den Einstellungen)
+
+Der Laden-Chef soll Mitarbeiter anlegen und Zeiten prüfen — nicht mit
+Weblinks und NFC-Technik hantieren. Deshalb liegt alles Technische hinter
+*Einstellungen → Entwickler-Einstellungen* und einer eigenen PIN
+(**Standard: 1337**, im Bereich änderbar):
+
+- Öffentliche Adresse (Tailscale-Funnel)
+- iPad- und Aufkleber-Adressen je Standort, QR-Codes, Sticker-Code neu
+- Chef von unterwegs (Fernzugang)
+- Angemeldete Push-Geräte
+- Entwickler-PIN ändern
+
+Das ist ausdrücklich **kein Sicherheits-, sondern ein Ordnungsding**: Die
+PIN hält den Bereich aus dem Alltag heraus, damit nichts aus Versehen
+verstellt wird. Die echte Sicherheit (Zwei-Port-Trennung, Fernzugang mit
+geheimer Adresse + langem Passwort) bleibt davon unberührt. Standorte
+anlegen und umbenennen kann der Chef weiterhin selbst.
 
 ### Gebaut für ein volles Jahr
 

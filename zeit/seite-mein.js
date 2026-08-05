@@ -19,21 +19,21 @@ const MEIN_CSS = `
 /* Die Nachfrage-Ebene muss ÜBER "Mein Plan" liegen - sonst tippt man ins
    Leere, wenn man aus dem Plan heraus krankmeldet oder tauscht. */
 .over{z-index:80}
-.meinBtn{background:rgba(235,90,33,.16);border:1px solid var(--o);color:#fff;
+.meinBtn{background:var(--o);border:1px solid var(--o);color:#fff;
  border-radius:9px;padding:7px 13px;font-size:13px;font-family:inherit;font-weight:600}
 .mein{position:fixed;inset:0;background:var(--bg);z-index:70;display:none;
  flex-direction:column;padding:max(14px,env(safe-area-inset-top)) 16px
  max(14px,env(safe-area-inset-bottom));overflow-y:auto;-webkit-overflow-scrolling:touch}
 .mein.auf{display:flex}
 .mKopf{display:flex;align-items:center;gap:12px;flex:0 0 auto;padding-bottom:14px;
- border-bottom:1px solid rgba(255,255,255,.08)}
-.mKopf .bild{width:52px;height:52px;border-radius:50%;overflow:hidden;background:#182136;
- border:2px solid var(--li);display:flex;align-items:center;justify-content:center;
- font-weight:800;color:#5c7096;flex:0 0 auto}
+ border-bottom:1px solid var(--li)}
+.mKopf .bild{width:52px;height:52px;border-radius:50%;overflow:hidden;background:var(--fl2);
+ border:2px solid var(--li2);display:flex;align-items:center;justify-content:center;
+ font-weight:800;color:var(--mut);flex:0 0 auto}
 .mKopf .bild img{width:100%;height:100%;object-fit:cover}
 .mKopf .nm{font-size:19px;font-weight:700}
 .mKopf .st{font-size:12.5px;opacity:.55;margin-top:2px}
-.mKopf .zu{margin-left:auto;background:none;border:1px solid var(--li);color:#f0f4f8;
+.mKopf .zu{margin-left:auto;background:none;border:1px solid var(--li);color:var(--txt);
  border-radius:9px;padding:8px 12px;font-size:13px;font-family:inherit}
 .mBody{flex:1 1 auto;padding-top:14px}
 .mH{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;opacity:.45;
@@ -55,21 +55,21 @@ const MEIN_CSS = `
 .msch.wartet{opacity:.55}
 .mleer{opacity:.45;font-size:13.5px;padding:6px 2px 2px}
 .mAkt{display:flex;gap:8px;margin-top:10px}
-.mAkt button{flex:1;background:var(--fl);border:1px solid var(--li);color:#f0f4f8;
+.mAkt button{flex:1;background:var(--fl);border:1px solid var(--li);color:var(--txt);
  border-radius:11px;padding:13px 8px;font-size:14px;font-family:inherit;font-weight:600}
-.mAkt button.warn{border-color:rgba(224,72,60,.55);color:#ff9c93}
+.mAkt button.warn{border-color:var(--rot);color:var(--rot)}
 .mZeile{display:flex;align-items:center;justify-content:space-between;gap:12px;
  background:var(--fl);border:1px solid var(--li);border-radius:13px;padding:13px}
 .mZeile .t1{font-size:14.5px;font-weight:600}
 .mZeile .t2{font-size:12px;opacity:.5;margin-top:3px;line-height:1.4}
 .mSch{position:relative;width:50px;height:29px;flex:0 0 auto}
 .mSch input{position:absolute;opacity:0;width:100%;height:100%;margin:0}
-.mSch .b{position:absolute;inset:0;background:#111a2b;border:1px solid var(--li);
+.mSch .b{position:absolute;inset:0;background:var(--fl2);border:1px solid var(--li2);
  border-radius:999px;transition:.2s}
 .mSch .b:after{content:"";position:absolute;width:21px;height:21px;border-radius:50%;
- background:#8b98b8;top:3px;left:3px;transition:.2s}
-.mSch input:checked+.b{background:rgba(235,90,33,.3);border-color:var(--o)}
-.mSch input:checked+.b:after{background:var(--o);transform:translateX(21px)}
+ background:var(--mut);top:3px;left:3px;transition:.2s}
+.mSch input:checked+.b{background:var(--o);border-color:var(--o)}
+.mSch input:checked+.b:after{background:#fff;transform:translateX(21px)}
 .mList{display:flex;flex-direction:column;gap:8px}
 `;
 
@@ -89,8 +89,8 @@ function meinCodeAbfrage(fehler){
   $("over").innerHTML=
    '<div class="gname" style="font-size:26px">Mein Plan</div>'+
    '<div class="gfrage">Bitte deinen Code eingeben</div>'+
-   '<div class="cfeld" id="cFeld">'+(code||"······")+'</div>'+
-   '<div class="cfehler" id="cFehler">'+(fehler||"")+'</div>'+
+   '<div class="codefeld" id="cFeld">'+(code||"······")+'</div>'+
+   '<div class="fehler" id="cFehler">'+(fehler||"")+'</div>'+
    '<div class="pad" id="cPad"></div>'+
    '<button class="klein" id="oNein">Abbrechen</button>';
   $("over").classList.add("auf");
@@ -99,12 +99,16 @@ function meinCodeAbfrage(fehler){
  }
  function malPad(){
   var pad=$("cPad");pad.innerHTML="";
-  var tasten=code.length<2
+  var buchst=code.length<2;
+  var tasten=buchst
    ?"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").concat(["⌫"])
    :["1","2","3","4","5","6","7","8","9","⌫","0","OK"];
+  pad.style.gridTemplateColumns=buchst?"repeat(6,1fr)":"repeat(3,1fr)";
+  pad.style.width=buchst?"360px":"300px";
   tasten.forEach(function(k){
    var b=document.createElement("button");
    b.textContent=k;
+   if(buchst){b.style.fontSize="19px";b.style.padding="13px 0";}
    b.onclick=function(){
     if(k==="⌫")code=code.slice(0,-1);
     else if(k==="OK"){los();return;}

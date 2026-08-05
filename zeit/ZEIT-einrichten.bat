@@ -90,6 +90,23 @@ if not exist "%TS%" (
   echo.
   echo   Deine oeffentliche Adresse:
   "%TS%" funnel status 2>nul | findstr /C:"8443"
+  echo.
+  rem Funnel muss im Tailscale-Konto einmalig erlaubt sein. Ohne die
+  rem Freigabe richtet der Befehl nur "Serve" ein - dann geht die Adresse
+  rem NUR mit eingeschaltetem Tailscale-VPN, nicht aus dem normalen Netz.
+  "%TS%" funnel status 2>nul | findstr /C:"Funnel on" >nul
+  if errorlevel 1 (
+    echo   ACHTUNG: Funnel ist noch NICHT oeffentlich freigegeben!
+    echo   Die Adresse geht dann nur mit Tailscale-VPN. So schaltest du frei:
+    echo     1. Diesen Befehl ausfuehren und die Ausgabe lesen:
+    echo        "%TS%" funnel --bg --https=8443 8794
+    echo     2. Erscheint eine login.tailscale.com-Adresse: im Browser
+    echo        oeffnen und Funnel erlauben. Ggf. in der Admin-Konsole
+    echo        unter DNS "MagicDNS" und "HTTPS Certificates" einschalten.
+    echo     3. Danach diesen Schritt wiederholen, bis hier "Funnel on" steht.
+  ) else (
+    echo   OK - Funnel ist oeffentlich (auch ohne Tailscale erreichbar).
+  )
 )
 echo.
 

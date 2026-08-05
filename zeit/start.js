@@ -18,11 +18,43 @@
 
 const path = require("path");
 const os = require("os");
+const fs = require("fs");
 const { createZeitServer } = require("./server");
 
 const PORT = Number(process.env.ZEIT_PORT) || 8792;
 const PUBLIC_PORT = Number(process.env.ZEIT_PORT_OEFFENTLICH) || (PORT + 2);
 const DATA = process.env.ZEIT_DATEN || path.join(__dirname, "daten");
+
+/*
+ * Fangnetz: Eine Stempeluhr darf nicht einfach sterben.
+ * - Jeder unerwartete Fehler landet mit Zeitstempel in daten/fehler.log,
+ *   damit man hinterher sieht, WAS passiert ist (die Konsole ist beim
+ *   Autostart unsichtbar).
+ * - Bei einem harten Fehler (uncaughtException) beenden wir uns bewusst
+ *   sauber - die ZEIT-start.bat-Schleife startet sofort neu. Weiterlaufen
+ *   waere riskanter: der innere Zustand koennte beschaedigt sein.
+ * - Abgelehnte Promises (meist ein weggestorbener Push-Dienst) werden nur
+ *   protokolliert, der Betrieb laeuft weiter.
+ */
+function fehlerLog(art, err) {
+  const zeile = new Date().toISOString() + " [" + art + "] " +
+    ((err && err.stack) || String(err)) + "\n";
+  try { fs.mkdirSync(DATA, { recursive: true }); } catch (_) {}
+  try {
+    const f = path.join(DATA, "fehler.log");
+    try { if (fs.statSync(f).size > 2 * 1024 * 1024) fs.renameSync(f, f + ".alt"); }
+    catch (_) {}
+    fs.appendFileSync(f, zeile);
+  } catch (_) {}
+  console.error(zeile.trim());
+}
+process.on("uncaughtException", (err) => {
+  fehlerLog("absturz", err);
+  process.exit(1);          // die Start-Schleife bringt uns sofort zurueck
+});
+process.on("unhandledRejection", (err) => {
+  fehlerLog("promise", err);
+});
 
 function adressen() {
   const out = [];
@@ -76,8 +108,4 @@ server.listen(PORT, () => {
     }
     console.log("");
   });
-});
-
-process.on("uncaughtException", (e) => {
-  console.error("[zeit] unerwarteter Fehler:", e && e.message);
 });

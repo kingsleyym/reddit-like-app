@@ -346,6 +346,12 @@ Schicht von vorgestern blockiert nicht die neue Schicht heute.
 
 ## Warum das nicht kaputtgeht
 
+0. **Absturz-Wächter.** Der Autostart ruft `ZEIT-start.bat` auf — eine
+   Schleife, die die Stempeluhr nach einem Absturz binnen 5 Sekunden neu
+   startet. Jeder Lauf protokolliert nach `daten/lauf.log`, harte Fehler
+   landen mit Zeitstempel und Ursache in `daten/fehler.log`. Ein Absturz
+   ist damit eine kurze Delle, kein Ausfall — und hinterher steht da,
+   woran es lag.
 1. **Jeder Stempel wird sofort an `stempel.log` angehängt** — eine reine
    Textdatei, die nie umgeschrieben wird. Selbst bei Stromausfall mitten im
    Speichern sind alte Stempel unversehrt.

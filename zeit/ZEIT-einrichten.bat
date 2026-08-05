@@ -59,13 +59,17 @@ if errorlevel 1 (
 )
 echo.
 
-echo  2/4  Autostart einrichten
+echo  2/4  Autostart einrichten (mit Absturz-Waechter)
+rem Die Aufgabe startet ZEIT-start.bat - eine Schleife, die node sofort neu
+rem startet, falls die Stempeluhr je abstuerzt. Ausgaben: daten\lauf.log,
+rem harte Fehler: daten\fehler.log.
+schtasks /End /TN "KingsleyZeit" >nul 2>&1
 schtasks /Delete /TN "KingsleyZeit" /F >nul 2>&1
-schtasks /Create /TN "KingsleyZeit" /TR "cmd /c cd /d \"%ZIEL%\" && node start.js" /SC ONLOGON /RL HIGHEST /F >nul 2>&1
+schtasks /Create /TN "KingsleyZeit" /TR "\"%ZIEL%\ZEIT-start.bat\"" /SC ONLOGON /RL HIGHEST /F >nul 2>&1
 if errorlevel 1 (
   echo   FEHLER beim Autostart - laeuft trotzdem, muss aber manuell gestartet werden.
 ) else (
-  echo   OK - startet ab jetzt automatisch mit Windows
+  echo   OK - startet automatisch mit Windows und nach jedem Absturz neu
 )
 echo.
 

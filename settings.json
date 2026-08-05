@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -sSL https://pkgs.tailscale.com/*)",
+      "Bash(tar -xzf /root/bin/ts.tgz*)",
+      "Bash(/root/bin/tailscale *)",
+      "Bash(/root/bin/tailscaled *)"
+    ]
+  }
+}

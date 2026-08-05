@@ -871,9 +871,15 @@ function zDev(c){
  var h='<h3 style="margin-top:26px">Entwickler</h3>';
 
  h+='<div class="karte dev"><h2>Öffentliche Adresse<span class="devtag">Dev</span></h2>'+
-  '<div class="untertitel">Tailscale-Funnel-Adresse für Aufkleber und iPads. '+
-  'Leer lassen, wenn alles im selben Netzwerk läuft. Für einen zweiten Laden '+
-  'muss sie gesetzt sein, sonst finden dessen Geräte den Server nicht.</div>'+
+  '<div class="untertitel">Tailscale-Funnel-Adresse (auf dem Laden-PC: '+
+  '<b>tailscale funnel status</b>). Alle iPad- und Aufkleber-Links werden '+
+  'daraus gebaut.</div>'+
+  (c.oeffentlicheAdresse?"":'<div class="hint" style="color:var(--rot);margin:0 0 8px">'+
+   '<b>Noch leer:</b> Die Links unten werden aus der Adresse gebaut, über die '+
+   'DU gerade zugreifst. Schaust du über Tailscale (100.…) drauf, funktionieren '+
+   'sie nur mit eingeschaltetem Tailscale – das iPad im Laden kommt dann nicht '+
+   'rein. Hier die https://…ts.net:8443-Adresse eintragen, dann laufen alle '+
+   'Links überall (und Push-Mitteilungen brauchen dieses HTTPS sowieso).</div>')+
   '<input id="sAdr" placeholder="https://…ts.net:8443" value="'+esc(c.oeffentlicheAdresse||"")+'">'+
   '<button class="btn voll" id="devAdrSave">Speichern</button></div>';
 

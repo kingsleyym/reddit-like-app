@@ -420,6 +420,12 @@ class ZeitStore {
     }
     const l = this.location(id);
     this.state.locations = this.state.locations.filter((x) => x.id !== id);
+    // Als Zweit-Standort darf er ueberall verschwinden - das blockiert nichts.
+    for (const e of this.state.employees) {
+      if (Array.isArray(e.auchLocIds)) {
+        e.auchLocIds = e.auchLocIds.filter((x) => x !== id);
+      }
+    }
     this._audit("standort-weg", l ? l.name : id, by);
     this.save();
     return true;
@@ -490,7 +496,7 @@ class ZeitStore {
       (e) => e.id !== exceptId && checkSecret(e.code, code));
   }
 
-  addEmployee({ name, code, locId, lang }, by) {
+  addEmployee({ name, code, locId, auchLocIds, lang }, by) {
     const c = String(code || "").toUpperCase().trim();
     if (!CODE_RE.test(c)) throw new Error("Code muss 2 Buchstaben + 4 Ziffern sein, z. B. AY1234.");
     if (this.codeTaken(c)) throw new Error("Dieser Code ist schon vergeben.");
@@ -503,10 +509,17 @@ class ZeitStore {
       active: true, photo: null,
       lang: lang === "en" ? "en" : "de",
     };
+    emp.auchLocIds = this._auchLocIds(auchLocIds, emp.locId);
     this.state.employees.push(emp);
     this._audit("mitarbeiter-neu", emp.name, by);
     this.save();
     return emp;
+  }
+
+  // Weitere Standorte bereinigen: nur echte Laeden, nie der Heimatstandort.
+  _auchLocIds(liste, heimatId) {
+    return [...new Set((Array.isArray(liste) ? liste : [])
+      .filter((id) => id && id !== heimatId && this.location(id)))].slice(0, 10);
   }
 
   updateEmployee(id, patch, by) {
@@ -514,6 +527,10 @@ class ZeitStore {
     if (!e) throw new Error("Mitarbeiter nicht gefunden.");
     if (patch.name !== undefined) e.name = String(patch.name).slice(0, 40) || e.name;
     if (patch.locId !== undefined) e.locId = patch.locId;
+    if (patch.auchLocIds !== undefined || patch.locId !== undefined) {
+      e.auchLocIds = this._auchLocIds(
+        patch.auchLocIds !== undefined ? patch.auchLocIds : e.auchLocIds, e.locId);
+    }
     if (patch.active !== undefined) e.active = !!patch.active;
     if (patch.lang !== undefined) e.lang = patch.lang === "en" ? "en" : "de";
     if (patch.code) {
@@ -550,6 +567,21 @@ class ZeitStore {
 
   employee(id) { return this.state.employees.find((e) => e.id === id) || null; }
   activeEmployees() { return this.state.employees.filter((e) => e.active !== false); }
+
+  /*
+   * Mehrere Standorte je Mitarbeiter: locId ist der Heimatstandort,
+   * auchLocIds sind weitere Laeden, in denen die Person einspringen kann.
+   * Sie erscheint dann auf den iPads und im Schichtplan aller dieser Laeden.
+   */
+  empLocIds(e) {
+    const ids = [e.locId].concat(Array.isArray(e.auchLocIds) ? e.auchLocIds : []);
+    return [...new Set(ids.filter((id) => id && this.location(id)))];
+  }
+  empAnStandort(e, locId) { return !locId || this.empLocIds(e).includes(locId); }
+  empLocNamen(e) {
+    return this.empLocIds(e)
+      .map((id) => (this.location(id) || {}).name).filter(Boolean).join(" + ");
+  }
   findByCode(code) {
     const c = String(code || "").toUpperCase().trim();
     if (!CODE_RE.test(c)) return null;
@@ -794,7 +826,7 @@ class ZeitStore {
     let sumAll = 0, problemeAll = 0;
     for (const emp of this.state.employees) {
       if (nurAktive && emp.active === false) continue;
-      if (locId && emp.locId !== locId) continue;
+      if (locId && !this.empAnStandort(emp, locId)) continue;
       let sum = 0, probleme = 0, schichten = 0, tage = new Set();
       for (const s of this.shiftsOf(emp.id)) {
         const ref = s.start || s.end;
@@ -810,10 +842,10 @@ class ZeitStore {
         if (s.offen || s.fehlerhaft || s.auto || brutto > maxMin) probleme++;
         sum += min;
       }
-      const loc = this.location(emp.locId);
       rows.push({
         empId: emp.id, name: emp.name, photo: emp.photo, codeHint: emp.codeHint,
-        active: emp.active !== false, locName: loc ? loc.name : "", locId: emp.locId,
+        active: emp.active !== false, locName: this.empLocNamen(emp),
+        locId: emp.locId, locIds: this.empLocIds(emp),
         min: sum, hours: fmtHours(sum), schichten, tage: tage.size, probleme,
         status: this.statusOf(emp.id),
       });
@@ -878,10 +910,10 @@ class ZeitStore {
   live() {
     return this.activeEmployees().map((e) => {
       const st = this.statusOf(e.id);
-      const loc = this.location(e.locId);
       return {
         empId: e.id, name: e.name, photo: e.photo,
-        location: loc ? loc.name : "", locId: e.locId,
+        location: this.empLocNamen(e), locId: e.locId,
+        locIds: this.empLocIds(e),
         in: st.in, since: st.since ? hhmm(st.since) : null,
         sinceMin: st.since ? minutesBetween(st.since, nowMs()) : 0,
       };
@@ -1105,7 +1137,7 @@ class ZeitStore {
       .sort((a, b) => (a.tag + a.von).localeCompare(b.tag + b.von));
     const leute = this.state.employees
       .filter((e) => e.active !== false)
-      .filter((e) => !locId || e.locId === locId)
+      .filter((e) => this.empAnStandort(e, locId))
       .map((e) => ({ id: e.id, name: e.name, photo: e.photo, locId: e.locId,
         stunden: schichten.filter((s) => s.empId === e.id)
           .reduce((a, s) => a + s.minuten, 0) }));
@@ -1247,7 +1279,7 @@ class ZeitStore {
     const raus = [];
     for (const emp of this.state.employees) {
       if (emp.active === false) continue;
-      if (locId && emp.locId !== locId) continue;
+      if (locId && !this.empAnStandort(emp, locId)) continue;
       const geplant = this.state.schichten.filter(
         (s) => s.empId === emp.id && s.tag >= von && s.tag <= bis && !s.abgesagt);
       const det = this.detail(emp.id, von, bis);

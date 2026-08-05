@@ -35,6 +35,7 @@ const pushmod = require("./push");
 const { stundenzettel } = require("./pdf");
 const { STEMPEL_HTML } = require("./seite-stempel");
 const { TERMINAL_HTML } = require("./seite-terminal");
+const { MEINWEB_HTML } = require("./seite-meinweb");
 const { CHEF_HTML } = require("./seite-chef");
 
 /* ------------------------------- Hilfen ---------------------------------- */
@@ -368,7 +369,7 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
             { url: "/chef#pruefen", tag: "vergessen" });
           melden(e.empId, "Du wurdest automatisch ausgestempelt",
             "Um " + hhmm(e.ts) + ". Sag kurz Bescheid, falls das nicht stimmt.",
-            { tag: "vergessen", dringend: false });
+            { url: "/mein", tag: "vergessen", dringend: false });
         }
       }
       // Zusaetzlich zur festen Uhrzeit, falls eingestellt
@@ -405,7 +406,7 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
           f.minutenSpaet + " Min.).", { url: "/chef", tag: "nichtda-" + f.schichtId });
         melden(f.empId, "Schicht läuft seit " + f.von,
           "Du bist noch nicht eingestempelt. Alles in Ordnung?",
-          { tag: "nichtda-" + f.schichtId });
+          { url: "/mein", tag: "nichtda-" + f.schichtId });
       }
     } catch (err) {
       console.error("[zeit] Schicht-Prüfung:", err.message);
@@ -534,6 +535,9 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
 
       /* --- Seiten --- */
       if (method === "GET" && (p === "/" || p === "/index.html")) return html(res, STEMPEL_HTML);
+      // "Mein Plan" von ueberall - bewusst auch auf dem oeffentlichen Port.
+      // Nur ansehen und melden; stempeln verlangt weiterhin Anwesenheit.
+      if (method === "GET" && p === "/mein") return html(res, MEINWEB_HTML);
       if (method === "GET" && p === "/chef") {
         if (oeffentlich && !(store.fernStatus().aktiv && fernOk(req))) {
           res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
@@ -568,10 +572,41 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
        * - Handy (nach NFC-Tipp): Code immer - das Handy ist ja privat, und der
        *   Code wird im Browser gemerkt, muss also nur einmal getippt werden.
        */
+      /*
+       * Nur wer HEUTE etwas mit diesem Laden zu tun hat, erscheint als
+       * Kachel: eingestempelt, fuer heute eingeteilt oder zu spaet dran.
+       * Alle anderen stecken hinter "weitere anzeigen" - bei 50 Leuten
+       * soll das iPad nicht 47 graue Kacheln ohne Bezug zeigen.
+       */
       if (method === "GET" && p === "/api/terminal/liste") {
         const o = ort(req);
         if (!o.ok) return json(res, { fehler: "kein-zugang" });
-        const leute = store.live().filter((x) => !o.locId || x.locId === o.locId);
+        const heute = dayKey(Date.now());
+        const jetztHM = hhmm(Date.now());
+        const inMin = (v) => {
+          const m = /^(\d{1,2}):(\d{2})$/.exec(String(v || ""));
+          return m ? Number(m[1]) * 60 + Number(m[2]) : 0;
+        };
+        const jetztMin = inMin(jetztHM);
+        const karenz = Number(store.state.config.nichtDaNach) || 15;
+        const leute = store.live()
+          .filter((x) => !o.locId || (x.locIds || [x.locId]).includes(o.locId))
+          .map((x) => {
+            const plan = store.state.schichten
+              .filter((s) => s.empId === x.empId && s.tag === heute &&
+                s.veroeffentlicht && !s.abgesagt &&
+                (!o.locId || s.locId === o.locId))
+              .sort((a, b) => a.von.localeCompare(b.von));
+            const s0 = plan[0];
+            let spaet = false;
+            if (s0 && !x.in) {
+              const von = inMin(s0.von), bis = inMin(s0.bis);
+              const vorbei = (bis > von) ? jetztMin > bis
+                : (jetztMin > bis && jetztMin < von);   // ueber Mitternacht
+              spaet = jetztMin >= von + karenz && !vorbei;
+            }
+            return { ...x, schicht: s0 ? { von: s0.von, bis: s0.bis } : null, spaet };
+          });
         const auf = store.darfStempeln(null, o.locId);
         return json(res, { leute, config: {
           firma: store.state.config.firma,
@@ -669,11 +704,14 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
       }
 
       /* -------------------- Mitarbeiter: mein Plan ---------------------- */
-      // Laeuft ueber denselben Weg wie das Stempeln: Aufkleber/Terminal +
-      // eigener Code. Kein zusaetzliches Konto, kein zusaetzliches Passwort.
+      /*
+       * Ansehen geht von UEBERALL - nur mit dem eigenen Code, ohne
+       * NFC-Tipp. Absicht: Wer zu Hause auf eine Mitteilung tippt, soll
+       * seinen Plan sehen und tauschen/krankmelden koennen. STEMPELN
+       * bleibt davon unberuehrt - das verlangt weiterhin die Anwesenheit
+       * (Aufkleber/Terminal), siehe /api/stempeln.
+       */
       if (method === "POST" && p === "/api/mein") {
-        const o = ort(req);
-        if (!o.ok) return json(res, { sperre: true });
         const b = await readBody(req);
         const emp = store.findByCode(b.code);
         if (!emp) return json(res, { ok: false, fehler: "Code stimmt nicht." });
@@ -681,14 +719,17 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
         const bis = dayKey(Date.now() + 28 * 86400000);
         const st = store.statusOf(emp.id);
         const selbst = store.selbst(emp.id) || {};
+        const meineLocs = store.empLocIds(emp);
         return json(res, {
           ok: true, id: emp.id, name: emp.name, photo: emp.photo,
           in: st.in, since: st.since ? hhmm(st.since) : null,
           heute: selbst.heute, woche: selbst.woche,
           schichten: store.meineSchichten(emp.id, heute, bis),
-          offene: store.offeneSchichten(emp.locId, heute).slice(0, 20),
+          offene: store.offeneSchichten(null, heute)
+            .filter((s) => !s.locId || meineLocs.includes(s.locId)).slice(0, 20),
           kollegen: store.activeEmployees()
-            .filter((e) => e.id !== emp.id && e.locId === emp.locId)
+            .filter((e) => e.id !== emp.id &&
+              store.empLocIds(e).some((l) => meineLocs.includes(l)))
             .map((e) => ({ id: e.id, name: e.name, photo: e.photo })),
           meldungen: store.state.meldungen.filter((m) => m.empId === emp.id)
             .sort((a, b2) => b2.ts - a.ts).slice(0, 10)
@@ -696,8 +737,6 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
         });
       }
       if (method === "POST" && p === "/api/meldung") {
-        const o = ort(req);
-        if (!o.ok) return json(res, { sperre: true });
         const b = await readBody(req);
         const emp = store.findByCode(b.code);
         if (!emp) return json(res, { ok: false, fehler: "Code stimmt nicht." });
@@ -843,14 +882,17 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
           })),
           employees: store.state.employees.map((e) => ({
             id: e.id, name: e.name, active: e.active !== false, photo: e.photo,
-            locId: e.locId, locName: locName[e.locId] || "", codeHint: e.codeHint || "",
+            locId: e.locId, locIds: store.empLocIds(e),
+            auchLocIds: Array.isArray(e.auchLocIds) ? e.auchLocIds : [],
+            locName: store.empLocNamen(e), codeHint: e.codeHint || "",
           })),
           live: store.live(),
           meldungenOffen: store.offeneMeldungen().length,
           summary: store.summary(von, bis, { locId: locId || null, nurAktive }),
           probleme: store.probleme(von, bis).map((x) => {
             const e = store.employee(x.empId);
-            return { ...x, locId: e ? e.locId : null };
+            return { ...x, locId: e ? e.locId : null,
+              locIds: e ? store.empLocIds(e) : [] };
           }),
           abos: store.state.abos.map((a) => ({
             wer: a.wer, geraet: a.geraet,
@@ -1002,7 +1044,7 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
             melden(l.empId, "Neuer Schichtplan",
               l.anzahl + (l.anzahl === 1 ? " Schicht" : " Schichten") + " für dich" +
               (naechste ? " – nächste: " + dayLabel(naechste.tag) + " " + naechste.von : "") + ".",
-              { url: "/terminal", tag: "plan", dringend: false });
+              { url: "/mein", tag: "plan", dringend: false });
           }
         }
         return json(res, r);
@@ -1015,11 +1057,11 @@ function createZeitServer({ dataDir, port = 8792, publicPort = 8794 }) {
           melden(m.empId, b.ja ? "Erledigt: " + m.typText : "Abgelehnt: " + m.typText,
             (m.schicht ? m.schicht.label2 + " – " : "") +
             (b.ja ? "Der Chef hat zugestimmt." : "Bitte kurz Rücksprache halten."),
-            { url: "/terminal", tag: "meldung" });
+            { url: "/mein", tag: "meldung" });
           if (b.ja && r.neuerEmp && r.neuerEmp !== m.empId) {
             melden(r.neuerEmp, "Neue Schicht für dich",
               (r.schicht ? dayLabel(r.schicht.tag) + " " + r.schicht.von + "–" + r.schicht.bis : ""),
-              { url: "/terminal", tag: "plan" });
+              { url: "/mein", tag: "plan" });
           }
         }
         return json(res, r);

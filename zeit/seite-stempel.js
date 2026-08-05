@@ -132,6 +132,10 @@ html,body{height:100%;overflow:hidden;-webkit-user-select:none;user-select:none;
     <div class="icon">📍</div>
     <div class="gross-txt" id="spTitel"></div>
     <div class="unter" id="spText" style="margin-top:12px"></div>
+    <a href="/mein" id="spMein" style="display:inline-block;margin-top:22px;
+     background:var(--fl);border:1px solid var(--li);color:var(--txt);
+     border-radius:12px;padding:13px 22px;font-size:14px;font-weight:600;
+     text-decoration:none"></a>
    </div>
   </div>
  </div>
@@ -149,7 +153,8 @@ var T={
   fehler:"Es hat nicht geklappt. Bitte nochmal versuchen.",
   tagT:"Tages-Code",tagX:"Die 4 Ziffern stehen groß auf dem iPad im Laden.",
   tagFalsch:"Falscher Tages-Code",zuOft:"Zu viele Versuche – kurz warten.",
-  nichtIch:"Ich bin das nicht",heuteL:"Heute",wocheL:"Diese Woche"},
+  nichtIch:"Ich bin das nicht",heuteL:"Heute",wocheL:"Diese Woche",
+  meinPlan:"Meine Schichten ansehen"},
  en:{hinweis:"Your code – 2 letters, then 4 digits",ok:"OK",
   falsch:"Unknown code – please try again",seit:"Clocked in since",
   nichtDa:"Not clocked in",rein:"CLOCK IN",raus:"CLOCK OUT",
@@ -159,7 +164,8 @@ var T={
   fehler:"That did not work. Please try again.",
   tagT:"Code of the day",tagX:"The 4 digits are shown on the iPad in the shop.",
   tagFalsch:"Wrong code of the day",zuOft:"Too many tries – please wait.",
-  nichtIch:"Not me",heuteL:"Today",wocheL:"This week"}
+  nichtIch:"Not me",heuteL:"Today",wocheL:"This week",
+  meinPlan:"View my shifts"}
 };
 var lang=localStorage.getItem("zeit-lang")||"de";
 function t(k){return (T[lang]||T.de)[k];}
@@ -186,6 +192,7 @@ function texte(){
  $("btnBack").textContent=t("zurueck");
  $("spTitel").textContent=t("sperreT");
  $("spText").textContent=t("sperreX");
+ $("spMein").textContent=t("meinPlan");
  malPad();feld();
  if(person)zeigePerson(person);
 }

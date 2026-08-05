@@ -157,6 +157,9 @@ label{display:block;font-size:12px;color:var(--mut);margin:12px 0 5px;font-weigh
 @media (prefers-color-scheme: dark){:root:not([data-thema]) .schalter .b:after{background:var(--mut);}}
 .schalter input:checked+.b{background:var(--o);border-color:var(--o);}
 .schalter input:checked+.b:after{background:#fff;transform:translateX(18px);}
+:root[data-thema="dunkel"] .schalter input:checked+.b:after{background:#fff;}
+@media (prefers-color-scheme: dark){
+ :root:not([data-thema]) .schalter input:checked+.b:after{background:#fff;}}
 .code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;
  background:var(--fl2);border:1px solid var(--li);border-radius:9px;padding:10px;
  word-break:break-all;overflow-wrap:anywhere;color:var(--txt);line-height:1.5;}

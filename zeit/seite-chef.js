@@ -367,8 +367,12 @@ function zeichne(){
 }
 
 /* -------------------------------- JETZT --------------------------------- */
+function anLoc(p){
+ if(!filterLoc)return true;
+ return (p.locIds||[p.locId]).indexOf(filterLoc)>-1;
+}
 function zJetzt(){
- var alle=daten.live.filter(function(p){return !filterLoc||p.locId===filterLoc;});
+ var alle=daten.live.filter(anLoc);
  var da=alle.filter(function(p){return p.in;});
  var weg=alle.filter(function(p){return !p.in;});
  var summe=da.reduce(function(a,p){return a+p.sinceMin;},0);
@@ -502,7 +506,7 @@ function problemText(p){
 
 /* ------------------------------ ZU PRÜFEN ------------------------------- */
 function zPruefen(){
- var pr=daten.probleme.filter(function(p){return !filterLoc||p.locId===filterLoc;});
+ var pr=daten.probleme.filter(anLoc);
  var h='<div class="seitentitel">Zu prüfen'+
   (pr.length?' <span class="warn" style="font-size:12px;padding:3px 9px">'+pr.length+'</span>':'')+
   '</div>'+
@@ -556,26 +560,55 @@ function mitarbeiter(id){
  var opts=daten.locations.map(function(l){
   return '<option value="'+l.id+'"'+(e&&e.locId===l.id?" selected":"")+'>'+
    esc(l.name)+'</option>';}).join("");
+ /* Bei mehreren Laeden: Heimatstandort plus "auch einsetzbar in ...". Die
+    Person erscheint dann auf den iPads und im Plan aller gewaehlten Laeden. */
+ var auch=(e&&e.auchLocIds?e.auchLocIds.slice():[]);
+ var auchHtml="";
+ if(daten.locations.length>1){
+  auchHtml='<label>Auch einsetzbar in</label><div class="chips" id="mAuch"></div>'+
+   '<div class="hint" style="margin-top:6px">Erscheint dann auch auf dem iPad '+
+   'und im Schichtplan dieser Läden.</div>';
+ }
  modal('<h2>'+(e?"Mitarbeiter bearbeiten":"Neuer Mitarbeiter")+'</h2>'+
   '<label>Name</label><input id="mName" value="'+(e?esc(e.name):"")+'">'+
   '<label>Persönlicher Code'+(e?" (leer lassen = unverändert)":"")+'</label>'+
   '<div class="reihe"><input id="mCode" placeholder="z. B. AY1234" maxlength="6" '+
    'style="text-transform:uppercase;letter-spacing:.14em">'+
    '<button class="btn g" style="flex:0 0 auto" id="mWuerfel">Vorschlag</button></div>'+
-  '<label>Standort</label><select id="mLoc">'+opts+'</select>'+
+  '<label>'+(daten.locations.length>1?"Heimatstandort":"Standort")+'</label>'+
+  '<select id="mLoc">'+opts+'</select>'+
+  auchHtml+
   '<label>Foto (optional)</label><input type="file" id="mFoto" accept="image/*">'+
   (e?'<div class="tw" style="margin-top:12px"><div class="t1">Aktiv</div>'+
    '<label class="schalter"><input type="checkbox" id="mAktiv"'+(e.active?" checked":"")+
    '><span class="b"></span></label></div>':"")+
   '<button class="btn voll" id="mSave">Speichern</button>'+
   '<button class="btn voll g" onclick="zu()">Abbrechen</button>');
+ /* Chips fuer die weiteren Standorte - der Heimatstandort ist nie waehlbar */
+ function auchMalen(){
+  if(!$("mAuch"))return;
+  var heim=$("mLoc").value;
+  auch=auch.filter(function(x){return x!==heim;});
+  $("mAuch").innerHTML=daten.locations
+   .filter(function(l){return l.id!==heim;})
+   .map(function(l){return '<button type="button" class="chip'+
+    (auch.indexOf(l.id)>-1?" on":"")+'" data-auch="'+l.id+'">'+esc(l.name)+'</button>';})
+   .join("");
+  $("mAuch").querySelectorAll("[data-auch]").forEach(function(b){
+   b.onclick=function(){
+    var i=auch.indexOf(b.dataset.auch);
+    if(i>-1)auch.splice(i,1);else auch.push(b.dataset.auch);
+    auchMalen();};});
+ }
+ auchMalen();
+ if($("mAuch"))$("mLoc").onchange=auchMalen;
  $("mWuerfel").onclick=function(){
   api("api/chef/code-vorschlag",{name:$("mName").value}).then(function(r){
    $("mCode").value=r.code;});
  };
  if(!e)setTimeout(function(){$("mWuerfel").click();},50);
  $("mSave").onclick=function(){
-  var body={name:$("mName").value,locId:$("mLoc").value};
+  var body={name:$("mName").value,locId:$("mLoc").value,auchLocIds:auch};
   var c=$("mCode").value.toUpperCase().trim();
   if(c)body.code=c;
   if(e){body.id=e.id;body.active=$("mAktiv").checked;}

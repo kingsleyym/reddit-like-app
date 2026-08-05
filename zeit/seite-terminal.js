@@ -63,6 +63,17 @@ html,body{height:100%;overflow:hidden;-webkit-user-select:none;user-select:none;
  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .kachel .st{font-size:12.5px;margin-top:5px;letter-spacing:.05em;opacity:.6;}
 .kachel.da .st{color:var(--gruen);opacity:1;font-weight:600;}
+/* Heute eingeteilt, noch nicht da */
+.kachel.plan{border-color:var(--o-rand);}
+.kachel.plan .st{color:var(--o);opacity:1;font-weight:600;}
+/* Schicht laeuft schon, niemand hat gestempelt */
+.kachel.spaet{border-color:var(--rot);background:var(--rot-weich);}
+.kachel.spaet .st{color:var(--rot);opacity:1;font-weight:700;}
+/* Auf- und Zuklappen der uebrigen Mitarbeiter */
+.kachel.mehr{border-style:dashed;display:flex;flex-direction:column;align-items:center;
+ justify-content:center;min-height:170px;color:var(--mut);cursor:pointer;}
+.kachel.mehr .gr{font-size:26px;font-weight:700;margin-bottom:6px;}
+.kachel.mehr:active{transform:scale(.97);}
 .fuss{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
  padding-top:12px;border-top:1px solid var(--li);font-size:12px;color:var(--mut);gap:8px;}
 .fuss button{background:none;border:1px solid var(--li);color:var(--mut);border-radius:8px;
@@ -192,18 +203,48 @@ function laden(){
   zeichne();
  }).catch(function(){});
 }
+/*
+ * Nur Kacheln mit Bezug zum heutigen Tag: eingestempelt, eingeteilt oder
+ * zu spaet. Der Rest (bei 50 Leuten waeren das 47 graue Kacheln) steckt
+ * hinter "weitere anzeigen" - oder man nimmt gleich "Code eingeben".
+ */
+var alleZeigen=false;
+function kachelVon(p){
+ var d=document.createElement("div");
+ var extra=p.in?" da":(p.spaet?" spaet":(p.schicht?" plan":""));
+ var st="nicht da";
+ if(p.in)st="seit "+esc(p.since);
+ else if(p.spaet)st="zu spät · ab "+esc(p.schicht.von);
+ else if(p.schicht)st="Schicht "+esc(p.schicht.von)+"–"+esc(p.schicht.bis);
+ d.className="kachel"+extra;
+ d.innerHTML='<div class="bild">'+bildHtml(p)+'</div>'+
+  '<div class="nm">'+esc(p.name)+'</div>'+
+  '<div class="st">'+st+'</div>';
+ d.onclick=function(){frage(p);};
+ return d;
+}
 function zeichne(){
  var g=$("gitter");g.innerHTML="";
  if(!leute.length){g.innerHTML='<div class="leer">Noch keine Mitarbeiter angelegt.</div>';return;}
- leute.forEach(function(p){
-  var d=document.createElement("div");
-  d.className="kachel"+(p.in?" da":"");
-  d.innerHTML='<div class="bild">'+bildHtml(p)+'</div>'+
-   '<div class="nm">'+esc(p.name)+'</div>'+
-   '<div class="st">'+(p.in?("seit "+esc(p.since)):"nicht da")+'</div>';
-  d.onclick=function(){frage(p);};
-  g.appendChild(d);
- });
+ var relevant=leute.filter(function(p){return p.in||p.schicht;});
+ var rest=leute.filter(function(p){return !p.in&&!p.schicht;});
+ relevant.forEach(function(p){g.appendChild(kachelVon(p));});
+ if(!relevant.length&&!alleZeigen){
+  var l=document.createElement("div");
+  l.className="leer";l.style.padding="30px 20px";
+  l.textContent="Heute ist niemand eingeteilt oder eingestempelt.";
+  g.appendChild(l);
+ }
+ if(alleZeigen)rest.forEach(function(p){g.appendChild(kachelVon(p));});
+ if(rest.length){
+  var m=document.createElement("div");
+  m.className="kachel mehr";
+  m.innerHTML=alleZeigen
+   ?'<div class="gr">–</div><div>weniger anzeigen</div>'
+   :'<div class="gr">+'+rest.length+'</div><div>weitere anzeigen</div>';
+  m.onclick=function(){alleZeigen=!alleZeigen;zeichne();};
+  g.appendChild(m);
+ }
  var da=leute.filter(function(p){return p.in;}).length;
  $("zaehler").textContent=da+" von "+leute.length+" im Laden";
 }
@@ -312,6 +353,7 @@ function alertBox(msg){
 $("btnCode").onclick=function(){
  var code="";
  function bau(){
+  $("over").classList.add("auf");
   $("over").innerHTML='<div class="gname" style="font-size:26px">Persönlicher Code</div>'+
    '<div class="gfrage">2 Buchstaben und 4 Ziffern</div>'+
    '<div class="codefeld" id="cFeld">'+(code||"······")+'</div>'+

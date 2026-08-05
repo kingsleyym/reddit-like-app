@@ -6,9 +6,15 @@ ohne fremde Bibliotheken (blankes Node genügt).
 ## Der Kerngedanke
 
 **Regelfall: das iPad im Laden.** Es hängt dauerhaft im Personalbereich und
-zeigt alle Mitarbeiter als große Foto-Kacheln. Jeder tippt sein eigenes Bild
-an — fertig. Grüne Kachel = im Laden, graue = nicht da. Mehrere Leute
-nacheinander am selben Gerät, ohne An- und Abmelden.
+zeigt die Mitarbeiter als große Foto-Kacheln. Jeder tippt sein eigenes Bild
+an — fertig. Grüne Kachel = im Laden, orange = heute eingeteilt, rote =
+Schicht läuft, aber noch nicht gestempelt. Mehrere Leute nacheinander am
+selben Gerät, ohne An- und Abmelden.
+
+**Nur der heutige Tag zählt.** Das iPad zeigt nur, wer heute Bezug zum Laden
+hat: eingestempelt, eingeteilt oder überfällig. Alle übrigen (bei 50 Leuten
+wären das 47 graue Kacheln) stecken hinter *„+ N weitere anzeigen"* — und wer
+spontan einspringt, klappt entweder auf oder nimmt gleich **Code eingeben**.
 
 **Notfall: der persönliche Code.** Jeder hat einen eigenen Code aus 2 Buchstaben
 und 4 Ziffern (z. B. `AY1234` für Ahmet Yilmaz). Damit funktioniert dieselbe
@@ -243,9 +249,17 @@ bekommen.
 
 ### Was Mitarbeiter können
 
-Am eigenen Handy (nach NFC-Tipp) oder am iPad im Laden: **Mein Plan** →
-Code eingeben. Am eigenen Handy ist der Code gemerkt, dort ist es ein
-einziger Tipp; **am iPad wird nie etwas gemerkt.**
+Am eigenen Handy oder am iPad im Laden: **Mein Plan** → Code eingeben. Am
+eigenen Handy ist der Code gemerkt, dort ist es ein einziger Tipp; **am iPad
+wird nie etwas gemerkt.**
+
+**Von zu Hause:** Die Adresse `/mein` (öffentlicher Port) zeigt den eigenen
+Plan von überall — nur mit dem persönlichen Code, ohne NFC-Tipp. Dort laufen
+auch die Mitteilungen zusammen: Wer zu Hause auf „Neuer Schichtplan" tippt,
+landet direkt in seinem Plan. Krankmelden, Tauschen und offene Schichten
+übernehmen geht dort genauso. **Stempeln geht dort ausdrücklich nicht** —
+das verlangt weiterhin die Anwesenheit im Laden (Aufkleber oder iPad). Das
+steht auch so auf der Seite.
 
 | Der Mitarbeiter kann | Was passiert |
 |---|---|
@@ -414,5 +428,8 @@ muss die Funnel-Adresse eingetragen sein (`https://…ts.net:8443`). Sonst zeige
 die erzeugten iPad- und Aufkleber-Links auf eine Adresse, die nur im ersten
 Laden erreichbar ist.
 
-Mitarbeiter werden einem Standort zugeordnet, können aber überall stempeln —
-die Auswertung zeigt dir, wo gestempelt wurde.
+Mitarbeiter haben einen **Heimatstandort** und können zusätzlich als
+*„auch einsetzbar in …"* weiteren Läden zugeteilt werden (im Team-Bereich).
+Sie erscheinen dann auf den iPads und im Schichtplan aller dieser Läden.
+Stempeln können sie ohnehin überall — die Auswertung zeigt dir, wo gestempelt
+wurde.
